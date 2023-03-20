@@ -1,0 +1,381 @@
+/* ========================================
+   边境传说 — CSS 样式框架
+   ======================================== */
+
+/* ========== CSS 变量 ========== */
+:root {
+  /* 颜色主题 */
+  --color-primary: #4a90d9;
+  --color-primary-dark: #2c5f8d;
+  --color-secondary: #f0a500;
+  --color-danger: #e74c3c;
+  --color-success: #2ecc71;
+  --color-info: #3498db;
+  --color-warning: #f39c12;
+  --color-dark: #1a1a2e;
+  --color-darker: #0f0f1a;
+  --color-light: #e0e0e0;
+  --color-gray: #888888;
+  --color-overlay: rgba(10, 10, 20, 0.85);
+
+  /* 尺寸 */
+  --hud-padding: 16px;
+  --panel-radius: 12px;
+  --bar-height: 24px;
+  --bar-track-height: 8px;
+
+  /* 字体 */
+  --font-family: 'Segoe UI', system-ui, sans-serif;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-lg: 18px;
+  --font-size-xl: 24px;
+
+  /* 动画 */
+  --transition-speed: 0.3s;
+}
+
+/* ========== 全局重置 ========== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--color-darker);
+  color: var(--color-light);
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* ========== 游戏容器 ========== */
+#game-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+#game-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ========== HUD 覆盖层 ========== */
+#hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+#hud > * {
+  pointer-events: auto;
+}
+
+/* ========== 状态栏（血条/魔力条）========== */
+#status-bars {
+  position: absolute;
+  top: var(--hud-padding);
+  left: var(--hud-padding);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 250px;
+}
+
+.bar-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bar-label {
+  font-size: var(--font-size-sm);
+  font-weight: bold;
+  min-width: 30px;
+  color: var(--color-light);
+}
+
+.bar-track {
+  flex: 1;
+  height: var(--bar-track-height);
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bar-fill {
+  height: 100%;
+  transition: width var(--transition-speed) ease;
+  border-radius: 4px;
+}
+
+.hp-fill {
+  background: linear-gradient(90deg, #e74c3c, #ff6b6b);
+  width: 100%;
+}
+
+.mp-fill {
+  background: linear-gradient(90deg, #3498db, #5dade2);
+  width: 100%;
+}
+
+.bar-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-light);
+  min-width: 80px;
+  text-align: right;
+}
+
+/* ========== 任务面板 ========== */
+#quest-panel {
+  position: absolute;
+  top: var(--hud-padding);
+  right: var(--hud-padding);
+  background: var(--color-overlay);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--panel-radius);
+  padding: 16px;
+  min-width: 250px;
+  max-width: 300px;
+}
+
+.quest-title {
+  font-size: var(--font-size-lg);
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: var(--color-secondary);
+}
+
+.quest-list-item {
+  padding: 6px 0;
+  font-size: var(--font-size-base);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--color-gray);
+}
+
+.quest-list-item.completed {
+  text-decoration: line-through;
+  color: var(--color-success);
+}
+
+/* ========== 小地图 ========== */
+#minimap {
+  position: absolute;
+  bottom: var(--hud-padding);
+  left: var(--hud-padding);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--panel-radius);
+  overflow: hidden;
+  background: var(--color-overlay);
+}
+
+#minimap-canvas {
+  display: block;
+  width: 150px;
+  height: 150px;
+}
+
+/* ========== 控制提示 ========== */
+#controls-hint {
+  position: absolute;
+  bottom: var(--hud-padding);
+  right: var(--hud-padding);
+  background: var(--color-overlay);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--panel-radius);
+  padding: 12px 16px;
+  font-size: var(--font-size-sm);
+  line-height: 1.8;
+}
+
+/* ========== 任务通知 ========== */
+#quest-notification {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: var(--font-size-xl);
+  font-weight: bold;
+  color: var(--color-secondary);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+#quest-notification.show {
+  opacity: 1;
+}
+
+/* ========== 覆盖屏幕（角色选择/菜单）========== */
+.overlay-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-overlay);
+  z-index: 100;
+}
+
+.overlay-screen.hidden {
+  display: none;
+}
+
+.panel {
+  background: linear-gradient(135deg, var(--color-dark), var(--color-darker));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--panel-radius);
+  padding: 40px;
+  text-align: center;
+  max-width: 600px;
+  width: 90%;
+}
+
+.panel h1 {
+  font-size: 36px;
+  color: var(--color-secondary);
+  margin-bottom: 8px;
+}
+
+.panel h2 {
+  font-size: var(--font-size-xl);
+  color: var(--color-gray);
+  margin-bottom: 24px;
+}
+
+/* ========== 角色选择 ========== */
+#character-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.character-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 16px 8px;
+  cursor: pointer;
+  transition: all var(--transition-speed);
+}
+
+.character-card:hover {
+  border-color: var(--color-primary);
+  background: rgba(74, 144, 217, 0.1);
+}
+
+.character-card.selected {
+  border-color: var(--color-secondary);
+  background: rgba(240, 165, 0, 0.15);
+}
+
+.character-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.character-name {
+  font-size: var(--font-size-sm);
+  font-weight: bold;
+}
+
+.character-class {
+  font-size: 11px;
+  color: var(--color-gray);
+}
+
+/* ========== 菜单 ========== */
+#menu-overlay .panel {
+  max-width: 350px;
+}
+
+.menu-btn {
+  display: block;
+  width: 100%;
+  padding: 12px 24px;
+  margin: 8px 0;
+  font-size: var(--font-size-base);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: var(--color-light);
+  cursor: pointer;
+  transition: all var(--transition-speed);
+}
+
+.menu-btn:hover {
+  background: rgba(74, 144, 217, 0.2);
+  border-color: var(--color-primary);
+}
+
+.btn-primary {
+  display: block;
+  width: 100%;
+  padding: 14px 32px;
+  font-size: var(--font-size-lg);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all var(--transition-speed);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(74, 144, 217, 0.4);
+}
+
+/* ========== 通用工具类 ========== */
+.hidden {
+  display: none !important;
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========== 响应式 ========== */
+@media (max-width: 768px) {
+  :root {
+    --hud-padding: 8px;
+  }
+
+  #status-bars {
+    min-width: 180px;
+  }
+
+  #minimap {
+    width: 100px;
+    height: 100px;
+  }
+
+  #minimap-canvas {
+    width: 100px;
+    height: 100px;
+  }
+
+  #controls-hint {
+    display: none;
+  }
+}

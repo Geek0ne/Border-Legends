@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎮 边境传说 — Border Legends</title>
+  <link rel="stylesheet" href="/src/ui/styles.css" />
+</head>
+<body>
+  <!-- 游戏容器 -->
+  <div id="game-container">
+    <!-- Three.js 渲染画布将被插入这里 -->
+    <canvas id="game-canvas"></canvas>
+  </div>
+
+  <!-- HUD 覆盖层 -->
+  <div id="hud">
+    <!-- 左上角：血条 + 魔力条 -->
+    <div id="status-bars">
+      <div class="bar-container hp-bar">
+        <div class="bar-label">HP</div>
+        <div class="bar-track">
+          <div id="hp-fill" class="bar-fill hp-fill"></div>
+        </div>
+        <span id="hp-text" class="bar-text">100 / 100</span>
+      </div>
+      <div class="bar-container mp-bar">
+        <div class="bar-label">MP</div>
+        <div class="bar-track">
+          <div id="mp-fill" class="bar-fill mp-fill"></div>
+        </div>
+        <span id="mp-text" class="bar-text">50 / 50</span>
+      </div>
+    </div>
+
+    <!-- 右上角：任务提示 -->
+    <div id="quest-panel" class="hidden">
+      <div class="quest-title">📜 当前任务</div>
+      <div id="quest-list"></div>
+    </div>
+
+    <!-- 左下角：小地图 -->
+    <div id="minimap">
+      <canvas id="minimap-canvas" width="150" height="150"></canvas>
+    </div>
+
+    <!-- 右下角：控制提示 -->
+    <div id="controls-hint">
+      <div>WASD — 移动</div>
+      <div>鼠标 — 视角</div>
+      <div>左键 — 攻击</div>
+      <div>Shift — 冲刺</div>
+      <div>空格 — 翻滚</div>
+      <div>E — 互动</div>
+    </div>
+
+    <!-- 任务通知 -->
+    <div id="quest-notification"></div>
+  </div>
+
+  <!-- 角色选择界面 -->
+  <div id="character-select" class="overlay-screen">
+    <div class="panel">
+      <h1>🎮 边境传说</h1>
+      <h2>选择你的角色</h2>
+      <div id="character-grid"></div>
+      <button id="start-btn" class="btn-primary">开始冒险</button>
+    </div>
+  </div>
+
+  <!-- 菜单面板 -->
+  <div id="menu-overlay" class="overlay-screen hidden">
+    <div class="panel">
+      <h2>菜单</h2>
+      <button class="menu-btn" id="btn-backpack">🎒 背包</button>
+      <button class="menu-btn" id="btn-skills">✨ 技能</button>
+      <button class="menu-btn" id="btn-map">🗺️ 地图</button>
+      <button class="menu-btn" id="btn-save">💾 保存</button>
+      <button class="menu-btn" id="btn-load">📂 读取</button>
+      <button class="menu-btn" id="btn-quit">🚪 退出</button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

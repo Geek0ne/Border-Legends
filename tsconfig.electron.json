@@ -1,0 +1,25 @@
+{
+  "exclude": [
+    "node_modules",
+    "dist",
+    "dist-electron",
+    "src"
+  ],
+  "include": [
+    "electron/**/*"
+  ],
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "strict": true,
+    "declaration": true,
+    "skipLibCheck": true,
+    "outDir": "./dist-electron",
+    "module": "CommonJS",
+    "forceConsistentCasingInFileNames": true,
+    "rootDir": "./electron",
+    "target": "ES2020",
+    "lib": [
+      "ES2020"
+    ]
+  }
+}

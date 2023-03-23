@@ -17,6 +17,7 @@ export interface CombatStats {
   critDamage: number;
   dodgeRate: number;
   knockbackResist: number;
+  id?: string;
 }
 
 // ==================== 伤害计算 ====================
@@ -161,4 +162,42 @@ export interface EnemyAI {
   aggression: number;
   fleeThreshold: number;
   lastSeenPlayer: { x: number; z: number } | null;
+}
+
+// ==================== 物品系统 ====================
+export type ItemType = 'weapon' | 'armor' | 'consumable' | 'currency' | 'material' | 'quest';
+
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+
+export type EquipmentSlot = 'mainHand' | 'offHand' | 'head' | 'chest' | 'legs' | 'boots' | 'gloves' | 'ring' | 'amulet';
+
+export interface Item {
+  id: string;
+  name: string;
+  type: ItemType;
+  rarity: Rarity;
+  description?: string;
+  icon?: string;
+  isStackable: boolean;
+  isEquipment?: boolean;
+  isConsumable?: boolean;
+  equipSlot?: EquipmentSlot;
+  // 属性加成
+  attack?: number;
+  defense?: number;
+  magic?: number;
+  magicDefense?: number;
+  speed?: number;
+  dodgeRate?: number;
+  critRate?: number;
+  critDamage?: number;
+  // 装备耐久
+  maxDurability?: number;
+  // 消耗品效果
+  healAmount?: number;
+  manaAmount?: number;
+  // 需求等级
+  requiredLevel?: number;
+  // 基础价值
+  baseValue?: number;
 }

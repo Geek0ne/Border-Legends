@@ -1,37 +1,230 @@
-import { skillDB, SkillRecord } from "./SkillDatabase";
+/**
+ * 边境传说 — 技能管理器
+ * 管理技能冷却、释放权限、技能槽位
+ */
+
+import type { SkillDef, StatusType } from '../../types/combat';
+import { SKILL_DATABASE, getSkillById } from './SkillDatabase';
+
+export interface ActiveSkill {
+  skillId: string;
+  cooldownRemaining: number;
+  isOnCooldown: boolean;
+  lastUsed: number;
+}
+
+export interface SkillSlot {
+  slotIndex: number;
+  skillId: string;
+  isLocked: boolean;
+}
 
 export class SkillManager {
-  private cooldowns: Map<string, number> = new Map();
-  private cooldownTimers: Map<string, number> = new Map();
+  private skillCooldowns: Map<string, ActiveSkill> = new Map();
+  private skillSlots: SkillSlot[] = [];
+  private unlockedSkills: Set<string> = new Set();
+  private maxSlots: number = 8;
 
-  useSkill(user: string, skillId: string, target: string, mp: number): { success: boolean; message: string; damage?: number } {
-    const skill = skillDB[skillId];
-    if (!skill) {
-      return { success: false, message: `Unknown skill: ${skillId}` };
+  constructor(unlockedSkillIds: string[] = []) {
+    this.maxSlots = 8;
+    this.initializeSlots();
+    for (const id of unlockedSkillIds) {
+      this.unlockedSkills.add(id);
+      this.skillCooldowns.set(id, {
+        skillId: id,
+        cooldownRemaining: 0,
+        isOnCooldown: false,
+        lastUsed: 0,
+      });
     }
-
-    if (mp < skill.mpCost) {
-      return { success: false, message: `Not enough MP for ${skill.name}` };
-    }
-
-    const currentCooldown = this.cooldowns.get(`${user}:${skill.id}`) || 0;
-    if (currentCooldown > 0) {
-      return { success: false, message: `${skill.name} is on cooldown (${currentCooldown.toFixed(1)}s)` };
-    }
-
-    this.cooldownTimers.set(`${user}:${skill.id}`, skill.cooldown);
-    return { success: true, message: `${user} used ${skill.name} on ${target}`, damage: skill.id === "fireball" ? 25 : skill.id === "ice_shard" ? 15 : undefined };
   }
 
-  updateCooldowns(delta: number): void {
-    for (const [key, timer] of this.cooldownTimers.entries()) {
-      const newTimer = timer - delta;
-      if (newTimer <= 0) {
-        this.cooldowns.delete(key);
-        this.cooldownTimers.delete(key);
-      } else {
-        this.cooldowns.set(key, newTimer);
+  /**
+   * 初始化技能槽位
+   */
+  private initializeSlots(): void {
+    for (let i = 0; i < this.maxSlots; i++) {
+      this.skillSlots.push({
+        slotIndex: i,
+        skillId: '',
+        isLocked: false,
+      });
+    }
+  }
+
+  /**
+   * 解锁新技能
+   */
+  public unlockSkill(skillId: string): boolean {
+    const skill = getSkillById(skillId);
+    if (!skill) return false;
+
+    this.unlockedSkills.add(skillId);
+
+    // 如果还有空槽位，自动装备
+    const emptySlot = this.skillSlots.find((s) => !s.isLocked && !s.skillId);
+    if (emptySlot) {
+      this.assignSkillToSlot(emptySlot.slotIndex, skillId);
+    }
+
+    this.skillCooldowns.set(skillId, {
+      skillId,
+      cooldownRemaining: 0,
+      isOnCooldown: false,
+      lastUsed: 0,
+    });
+
+    return true;
+  }
+
+  /**
+   * 将技能分配到槽位
+   */
+  public assignSkillToSlot(slotIndex: number, skillId: string): boolean {
+    const slot = this.skillSlots[slotIndex];
+    if (!slot) return false;
+
+    if (!this.unlockedSkills.has(skillId)) {
+      return false;
+    }
+
+    // 如果槽位已有技能，先移除
+    if (slot.skillId) {
+      this.skillCooldowns.delete(slot.skillId);
+    }
+
+    slot.skillId = skillId;
+
+    // 确保冷却记录存在
+    if (!this.skillCooldowns.has(skillId)) {
+      this.skillCooldowns.set(skillId, {
+        skillId,
+        cooldownRemaining: 0,
+        isOnCooldown: false,
+        lastUsed: 0,
+      });
+    }
+
+    return true;
+  }
+
+  /**
+   * 检查是否可以释放技能
+   */
+  public canCast(skillId: string, currentMp: number): boolean {
+    const skill = getSkillById(skillId);
+    if (!skill) return false;
+
+    const cd = this.skillCooldowns.get(skillId);
+    if (cd?.isOnCooldown) return false;
+
+    return currentMp >= skill.cost;
+  }
+
+  /**
+   * 开始冷却
+   */
+  public startCooldown(skillId: string): void {
+    const skill = getSkillById(skillId);
+    if (!skill) return;
+
+    let cd = this.skillCooldowns.get(skillId);
+    if (!cd) {
+      cd = { skillId, cooldownRemaining: 0, isOnCooldown: false, lastUsed: 0 };
+      this.skillCooldowns.set(skillId, cd);
+    }
+
+    cd.isOnCooldown = true;
+    cd.cooldownRemaining = skill.cooldown;
+    cd.lastUsed = Date.now();
+  }
+
+  /**
+   * 更新冷却
+   */
+  public tickCooldowns(dt: number): void {
+    this.skillCooldowns.forEach((cd) => {
+      if (cd.isOnCooldown && cd.cooldownRemaining > 0) {
+        cd.cooldownRemaining -= dt;
+        if (cd.cooldownRemaining <= 0) {
+          cd.cooldownRemaining = 0;
+          cd.isOnCooldown = false;
+        }
       }
+    });
+  }
+
+  /**
+   * 获取技能冷却剩余时间
+   */
+  public getCooldownRemaining(skillId: string): number {
+    const cd = this.skillCooldowns.get(skillId);
+    return cd?.cooldownRemaining ?? 0;
+  }
+
+  /**
+   * 获取技能详情
+   */
+  public getSkill(skillId: string): SkillDef | undefined {
+    return getSkillById(skillId);
+  }
+
+  /**
+   * 获取已解锁技能列表
+   */
+  public getUnlockedSkills(): SkillDef[] {
+    return Array.from(this.unlockedSkills)
+      .map((id) => getSkillById(id))
+      .filter((s): s is SkillDef => s !== undefined);
+  }
+
+  /**
+   * 获取槽位状态
+   */
+  public getSkillSlots(): SkillSlot[] {
+    return this.skillSlots.map((slot) => ({ ...slot }));
+  }
+
+  /**
+   * 获取所有冷却状态
+   */
+  public getAllCooldowns(): Map<string, ActiveSkill> {
+    return new Map(this.skillCooldowns);
+  }
+
+  /**
+   * 检查技能是否在冷却中
+   */
+  public isOnCooldown(skillId: string): boolean {
+    const cd = this.skillCooldowns.get(skillId);
+    return cd?.isOnCooldown ?? false;
+  }
+
+  /**
+   * 检查技能可用
+   */
+  public isSkillAvailable(skillId: string, currentMp: number): boolean {
+    return this.canCast(skillId, currentMp) && !this.isOnCooldown(skillId);
+  }
+
+  /**
+   * 检查状态效果
+   */
+  public hasStatusEffect(
+    entityId: string,
+    statusType: StatusType
+  ): boolean {
+    // 简化实现：实际项目中需要结合战斗系统
+    return false;
+  }
+
+  /**
+   * 设置槽位锁定
+   */
+  public lockSlot(slotIndex: number, locked: boolean): void {
+    const slot = this.skillSlots[slotIndex];
+    if (slot) {
+      slot.isLocked = locked;
     }
   }
 }

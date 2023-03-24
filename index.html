@@ -9,13 +9,11 @@
 <body>
   <!-- 游戏容器 -->
   <div id="game-container">
-    <!-- Three.js 渲染画布将被插入这里 -->
     <canvas id="game-canvas"></canvas>
   </div>
 
   <!-- HUD 覆盖层 -->
   <div id="hud">
-    <!-- 左上角：血条 + 魔力条 -->
     <div id="status-bars">
       <div class="bar-container hp-bar">
         <div class="bar-label">HP</div>
@@ -32,19 +30,21 @@
         <span id="mp-text" class="bar-text">50 / 50</span>
       </div>
     </div>
-
-    <!-- 右上角：任务提示 -->
+    <div id="level-info" class="hidden">
+      <span id="level-text">Lv.1</span>
+      <span id="xp-bar-container">
+        <div id="xp-fill" class="bar-fill xp-fill"></div>
+      </span>
+      <span id="xp-text" class="bar-text">0 / 100</span>
+      <span id="gold-text" class="bar-text">💰 0</span>
+    </div>
     <div id="quest-panel" class="hidden">
       <div class="quest-title">📜 当前任务</div>
       <div id="quest-list"></div>
     </div>
-
-    <!-- 左下角：小地图 -->
     <div id="minimap">
       <canvas id="minimap-canvas" width="150" height="150"></canvas>
     </div>
-
-    <!-- 右下角：控制提示 -->
     <div id="controls-hint">
       <div>WASD — 移动</div>
       <div>鼠标 — 视角</div>
@@ -53,18 +53,21 @@
       <div>空格 — 翻滚</div>
       <div>E — 互动</div>
     </div>
-
-    <!-- 任务通知 -->
     <div id="quest-notification"></div>
+    <div id="combat-log" class="hidden"></div>
   </div>
 
   <!-- 角色选择界面 -->
   <div id="character-select" class="overlay-screen">
-    <div class="panel">
+    <div class="panel character-select-panel">
       <h1>🎮 边境传说</h1>
-      <h2>选择你的角色</h2>
-      <div id="character-grid"></div>
-      <button id="start-btn" class="btn-primary">开始冒险</button>
+      <h2>Border Legends</h2>
+      <p class="subtitle">选择你的角色，开始冒险</p>
+      <div id="character-grid" class="character-grid"></div>
+      <div id="selected-character-info" class="selected-info hidden"></div>
+      <div class="button-group">
+        <button id="start-btn" class="btn-primary" disabled>开始冒险</button>
+      </div>
     </div>
   </div>
 
@@ -78,6 +81,15 @@
       <button class="menu-btn" id="btn-save">💾 保存</button>
       <button class="menu-btn" id="btn-load">📂 读取</button>
       <button class="menu-btn" id="btn-quit">🚪 退出</button>
+    </div>
+  </div>
+
+  <!-- 背包面板 -->
+  <div id="backpack-panel" class="overlay-screen hidden">
+    <div class="panel backpack-panel">
+      <h2>🎒 背包</h2>
+      <div id="inventory-grid" class="inventory-grid"></div>
+      <button class="menu-btn" id="btn-backpack-close">关闭</button>
     </div>
   </div>
 

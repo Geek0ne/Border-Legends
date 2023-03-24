@@ -98,7 +98,7 @@ export const DEFAULT_AI_DECISION: AIDecisionConfig = {
 };
 
 // ==================== AI 记忆系统 ====================
-export interface AIE memoryEntry {
+export interface AIEntry {
   entityId: string;
   timestamp: number;
   type: 'player_attack' | 'player_flee' | 'skill_used' | 'death' | 'summon';
@@ -108,7 +108,7 @@ export interface AIE memoryEntry {
 export interface AIBrain {
   entityId: string;
   state: AIState;
-  memory: AIE memoryEntry[];
+  memory: AIEntry[];
   maxMemory: number;
   // 当前目标
   currentTarget?: string;

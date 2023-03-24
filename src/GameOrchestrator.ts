@@ -1,0 +1,331 @@
+/**
+ * 边境传说 - 游戏主控制器
+ * 连接所有子系统并驱动游戏循环
+ */
+
+import * as THREE from 'three';
+import { HUDSystem } from './game/hud/HUDSystem';
+import { FloatingTextRenderer } from './game/hud/FloatingTextRenderer';
+import { EnemyManager } from './game/enemy/EnemyManager';
+import { QuestManager } from './game/quest/QuestManager';
+import { PickupSystem } from './game/pickup/PickupSystem';
+import { SceneManager } from './game/scenes/SceneManager';
+import { InventorySystem } from './systems/InventorySystem';
+import { InputManager } from './input/InputManager';
+import { AudioSystem } from './systems/AudioSystem';
+import { QuestUpdateEvent, HUDState, FloatingText, LootDrop } from './types';
+
+export class GameOrchestrator {
+  private renderer: THREE.WebGLRenderer;
+  private scene: THREE.Scene;
+  private camera: THREE.PerspectiveCamera;
+  private clock: THREE.Clock;
+  private animationId: number = 0;
+
+  // 子系统
+  private hud: HUDSystem;
+  private floatingTextRenderer: FloatingTextRenderer;
+  private enemyManager: EnemyManager;
+  private questManager: QuestManager;
+  private pickupSystem: PickupSystem;
+  private sceneManager: SceneManager;
+  private inventorySystem: InventorySystem;
+  private inputManager: InputManager;
+  private audioSystem: AudioSystem;
+
+  // 状态
+  private isRunning: boolean = false;
+  private isPaused: boolean = false;
+  private currentScene: THREE.Scene | null = null;
+
+  constructor(
+    renderer: THREE.WebGLRenderer,
+    scene: THREE.Scene,
+    camera: THREE.PerspectiveCamera,
+    canvas2D: HTMLCanvasElement,
+  ) {
+    this.renderer = renderer;
+    this.scene = scene;
+    this.camera = camera;
+    this.clock = new THREE.Clock();
+
+    // 初始化子系统
+    this.hud = new HUDSystem();
+    this.floatingTextRenderer = new FloatingTextRenderer(canvas2D, canvas2D.width, canvas2D.height);
+    this.floatingTextRenderer.setCamera(camera);
+
+    this.enemyManager = new EnemyManager(this.hud);
+    this.inventorySystem = new InventorySystem(50);
+    this.questManager = new QuestManager(this.hud, this.inventorySystem);
+    this.pickupSystem = new PickupSystem();
+    this.sceneManager = new SceneManager();
+    this.inputManager = new InputManager();
+    this.audioSystem = new AudioSystem();
+
+    // 连接子系统事件
+    this.hud.setOnFloatingTextsUpdate((texts: FloatingText[]) => {
+      this.floatingTextRenderer.setTexts(texts);
+    });
+
+    this.pickupSystem.setOnPickup((drop: LootDrop) => {
+      this.inventorySystem.addItem(drop.itemId);
+      this.hud.showNotification('拾取: ' + drop.itemId);
+    });
+
+    this.hud.setOnUpdate((state: HUDState) => {
+      this.updateHUD(state);
+    });
+  }
+
+  /**
+   * 启动游戏主循环
+   */
+  public start(): void {
+    if (this.isRunning) return;
+    this.isRunning = true;
+    this.clock.start();
+    this.animate();
+    console.log('[GameOrchestrator] 游戏启动');
+  }
+
+  /**
+   * 停止游戏
+   */
+  public stop(): void {
+    this.isRunning = false;
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+    }
+    console.log('[GameOrchestrator] 游戏停止');
+  }
+
+  /**
+   * 游戏主循环
+   */
+  private animate = (): void => {
+    if (!this.isRunning) return;
+    this.animationId = requestAnimationFrame(this.animate);
+
+    if (this.isPaused) return;
+
+    const delta = Math.min(this.clock.getDelta(), 0.1); // 防跳帧
+    const time = this.clock.getElapsedTime();
+
+    this.tick(delta, time);
+    this.render();
+  };
+
+  /**
+   * 单帧更新
+   */
+  private tick(delta: number, time: number): void {
+    // 处理输入
+    const input = this.inputManager.poll();
+    if (input) {
+      this.handleInput(input, delta);
+    }
+
+    // 更新 HUD
+    this.hud.tick(delta);
+
+    // 更新敌人
+    this.enemyManager.tick(delta);
+
+    // 更新拾取物
+    this.pickupSystem.tick(delta);
+
+    // 自动拾取
+    const playerPos = this.getApproximatePlayerPosition();
+    if (playerPos) {
+      this.pickupSystem.checkAutoPickup(playerPos);
+    }
+
+    // 检查任务目标
+    this.questManager.checkObjectives();
+  }
+
+  /**
+   * 渲染
+   */
+  private render(): void {
+    // 主场景
+    this.renderer.render(this.scene, this.camera);
+    // 浮动文字层（通过 Canvas2D 渲染）
+    this.floatingTextRenderer.render();
+  }
+
+  /**
+   * 处理输入事件
+   */
+  private handleInput(input: any, delta: number): void {
+    // TODO: 将输入传递给玩家控制器
+    if (input.attack) {
+      this.performAttack();
+    }
+    if (input.interact) {
+      this.attemptInteract();
+    }
+    if (input.inventory) {
+      this.toggleInventory();
+    }
+    if (input.map) {
+      this.toggleMap();
+    }
+    if (input.menu) {
+      this.toggleMenu();
+    }
+  }
+
+  /**
+   * 攻击逻辑
+   */
+  private performAttack(): void {
+    const playerPos = this.getApproximatePlayerPosition();
+    if (!playerPos) return;
+
+    const enemiesInRange = this.enemyManager.getEnemiesInRange(playerPos);
+    let hitAny = false;
+    for (const enemy of enemiesInRange) {
+      const dx = enemy.position.x - playerPos.x;
+      const dz = enemy.position.z - playerPos.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist <= 5) {
+        // 模拟伤害
+        const damage = Math.max(1, 10 - enemy.def.defense);
+        const killed = this.enemyManager.applyDamage(enemy, damage, this.hud);
+        this.hud.addFloatingText(damage.toString(), playerPos.x + dx, playerPos.z + dz, 0xffdd44);
+        hitAny = true;
+
+        if (killed) {
+          // 获得经验
+          this.hud.addXP(enemy.def.hp / 10);
+          this.hud.addGold(Math.floor(enemy.def.hp / 20));
+          this.hud.showNotification('消灭 ' + enemy.def.name);
+
+          // 生成掉落物
+          this.generateLoot(enemy);
+        }
+      }
+    }
+    if (hitAny) {
+      this.hud.setCombatState(true);
+    }
+  }
+
+  /**
+   * 生成掉落物
+   */
+  private generateLoot(enemy: any): void {
+    if (!enemy.def.drops || !enemy.def.drops.items) return;
+    for (const drop of enemy.def.drops.items) {
+      if (Math.random() < drop.chance) {
+        const loot: LootDrop = {
+          itemId: drop.itemId,
+          itemName: drop.itemId,
+          quantity: 1,
+          rarity: 'common',
+          droppedAt: { x: enemy.position.x, z: enemy.position.z },
+          timestamp: Date.now(),
+        };
+        this.pickupSystem.createPickup(loot, this.scene);
+      }
+    }
+  }
+
+  /**
+   * 交互逻辑
+   */
+  private attemptInteract(): void {
+    const playerPos = this.getApproximatePlayerPosition();
+    if (!playerPos) return;
+
+    // 检查附近的敌人
+    const enemiesInRange = this.enemyManager.getEnemiesInRange(playerPos);
+    for (const enemy of enemiesInRange) {
+      const dx = enemy.position.x - playerPos.x;
+      const dz = enemy.position.z - playerPos.z;
+      if (Math.sqrt(dx * dx + dz * dz) <= 3) {
+        this.hud.showNotification('与 ' + enemy.def.name + ' 交互');
+        return;
+      }
+    }
+  }
+
+  /**
+   * 获取玩家近似位置
+   */
+  private getApproximatePlayerPosition(): { x: number; z: number } | null {
+    // 简化：从相机位置推断
+    const pos = this.camera.position;
+    return { x: pos.x, z: pos.z };
+  }
+
+  /**
+   * 更新 HUD DOM 元素
+   */
+  private updateHUD(state: HUDState): void {
+    // HP 条
+    const hpBar = document.getElementById('hp-fill') as HTMLElement;
+    if (hpBar) hpBar.style.width = (state.hp / state.maxHp * 100) + '%';
+    const hpText = document.getElementById('hp-text') as HTMLElement;
+    if (hpText) hpText.textContent = state.hp + '/' + state.maxHp;
+
+    // MP 条
+    const mpBar = document.getElementById('mp-fill') as HTMLElement;
+    if (mpBar) mpBar.style.width = (state.mp / state.maxMp * 100) + '%';
+    const mpText = document.getElementById('mp-text') as HTMLElement;
+    if (mpText) mpText.textContent = state.mp + '/' + state.maxMp;
+
+    // 等级
+    const levelText = document.getElementById('level-text') as HTMLElement;
+    if (levelText) levelText.textContent = 'Lv.' + state.level;
+
+    // 经验条
+    const xpBar = document.getElementById('xp-bar-fill') as HTMLElement;
+    if (xpBar) xpBar.style.width = (state.xp / state.xpToNext * 100) + '%';
+
+    // 金币
+    const goldText = document.getElementById('gold-text') as HTMLElement;
+    if (goldText) goldText.textContent = '金币: ' + state.gold;
+
+    // 战斗状态
+    const statusBars = document.getElementById('status-bars') as HTMLElement;
+    if (statusBars) {
+      statusBars.style.borderColor = state.isCombat ? '#e74c3c' : 'transparent';
+    }
+  }
+
+  /**
+   * 切换背包
+   */
+  private toggleInventory(): void {
+    this.hud.setCombatState(!this.hud.getState().isCombat);
+  }
+
+  /**
+   * 切换小地图
+   */
+  private toggleMap(): void {
+    const minimap = document.getElementById('minimap');
+    if (minimap) minimap.classList.toggle('hidden');
+  }
+
+  /**
+   * 切换菜单
+   */
+  private toggleMenu(): void {
+    this.hud.setCombatState(!this.hud.getState().isCombat);
+  }
+
+  // 快捷访问方法
+  public getHUD(): HUDSystem { return this.hud; }
+  public getEnemyManager(): EnemyManager { return this.enemyManager; }
+  public getQuestManager(): QuestManager { return this.questManager; }
+  public getPickupSystem(): PickupSystem { return this.pickupSystem; }
+  public getSceneManager(): SceneManager { return this.sceneManager; }
+  public getInventorySystem(): InventorySystem { return this.inventorySystem; }
+  public getInputManager(): InputManager { return this.inputManager; }
+  public getAudioSystem(): AudioSystem { return this.audioSystem; }
+  public setPaused(p: boolean): void { this.isPaused = p; }
+  public isGameRunning(): boolean { return this.isRunning; }
+}

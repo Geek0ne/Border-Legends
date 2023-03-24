@@ -69,7 +69,7 @@ export class GameEngine {
   }
 
   private onRender(delta: number): void {
-    this.cameraController.update();
+    this.cameraController.update(delta);
     if (this.currentScene) {
       this.currentScene.update(delta);
     }

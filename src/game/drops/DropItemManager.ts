@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { EnemyDef, EnemyDrop } from '../../types';
+import { EnemyDef, DropEntry } from '../../types/index';
 
 export interface DropItem {
   itemId: string;
@@ -21,7 +21,7 @@ export class DropItemManager {
   private spawnDuration: number = 5;
 
   spawnDrop(
-    dropDef: EnemyDrop,
+    dropDef: DropEntry,
     position: THREE.Vector3,
     quality: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' = 'common'
   ): DropItem {
@@ -42,7 +42,7 @@ export class DropItemManager {
   }
 
   spawnMultiple(
-    drops: EnemyDrop[],
+    drops: DropEntry[],
     position: THREE.Vector3
   ): DropItem[] {
     const spawned: DropItem[] = [];
@@ -56,7 +56,7 @@ export class DropItemManager {
   }
 
   spawnLootTable(
-    lootTable: Array<{ item: EnemyDrop; chance: number; qualities?: Array<{ quality: string; weight: number }> }>,
+    lootTable: Array<{ item: DropEntry; chance: number; qualities?: Array<{ quality: string; weight: number }> }>,
     position: THREE.Vector3
   ): DropItem[] {
     const spawned: DropItem[] = [];

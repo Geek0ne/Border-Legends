@@ -51,6 +51,7 @@ export class CharacterSelectUI {
   private startBtn: HTMLButtonElement;
   private selectedCharacter: CharacterDef | null = null;
   private callbacks: CharacterSelectCallbacks;
+  private isVisible: boolean = true; // Track visibility
 
   constructor(callbacks: CharacterSelectCallbacks) {
     this.callbacks = callbacks;
@@ -129,7 +130,18 @@ export class CharacterSelectUI {
     this.callbacks.onCharacterSelected(character);
   }
 
-  show(): void { this.container.classList.remove("hidden"); }
-  hide(): void { this.container.classList.add("hidden"); }
+  show(): void {
+    this.container.classList.remove("hidden");
+    this.isVisible = true;
+  }
+
+  hide(): void {
+    this.container.classList.add("hidden");
+    this.isVisible = false;
+  }
+
+  isHidden(): boolean { return !this.isVisible; }
+
   getSelectedCharacter(): CharacterDef | null { return this.selectedCharacter; }
 }
+

@@ -5,6 +5,46 @@
 
 import type { SkillDef } from '../../types/combat';
 
+// ==================== Skill Database Types ====================
+export interface PassiveSkillDef {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  effectType: string;
+  value: number;
+  statBonus?: Record<string, number>;
+  triggerCondition?: string;
+  stackable?: boolean;
+  maxStacks?: number;
+}
+
+export interface SkillTreeNode {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
+  nodeType: 'root' | 'branch' | 'passive' | 'skill' | 'reward';
+  prerequisites?: string[];
+  unlocksPassiveId?: string;
+  unlocksSkillId?: string;
+  cost?: number;
+  position?: { x: number; y: number };
+  maxLevel: number;
+  currentLevel?: number;
+  children?: string[];
+}
+
+export interface SkillTreeConfig {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
+  class: string;
+  maxPoints: number;
+  nodes: SkillTreeNode[];
+}
+
 export const SKILL_DATABASE: Record<string, SkillDef> = {
   // ===== 基础攻击 =====
   basic_attack: {

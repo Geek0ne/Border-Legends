@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 边境传说 — 技能栏渲染器
  * 在屏幕底部渲染可拖拽的技能快捷栏
  */
@@ -184,7 +184,7 @@ export class SkillBarRenderer {
       ctx.stroke();
 
       // 快捷键标签
-      ctx.font = `${this.fontSize}px monospace`;
+      ctx.font = `${this.cooldownFontSize}px monospace`;
 
       ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
       ctx.textAlign = 'left';
@@ -205,7 +205,7 @@ export class SkillBarRenderer {
         ctx.fill();
 
         // 冷却时间文字
-      ctx.font = `${this.fontSize}px monospace`;
+      ctx.font = `${this.cooldownFontSize}px monospace`;
 
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';

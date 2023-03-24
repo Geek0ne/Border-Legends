@@ -97,16 +97,6 @@ export interface CombatLogEntry {
     target?: string;
     value?: number;
 }
-export interface LootDrop {
-    itemId: string;
-    itemName: string;
-    quantity: number;
-    quality: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-    droppedAt: {
-        x: number;
-        z: number;
-    };
-}
 export interface KillRecord {
     enemyId: string;
     enemyName: string;

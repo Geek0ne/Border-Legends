@@ -1,0 +1,10 @@
+
+> border-legends@0.1.0 dev
+> vite --host 0.0.0.0
+
+error when starting dev server:
+Error: Port 3000 is already in use
+    at Server.onError (file:///E:/CodeX_Projects/GameApp/node_modules/vite/dist/node/chunks/dep-CkSfqg8D.js:25336:18)
+    at Server.emit (node:events:508:28)
+    at emitErrorNT (node:net:1984:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)

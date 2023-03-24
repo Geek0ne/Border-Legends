@@ -57,6 +57,8 @@ export interface DropTable {
 
 export interface DropEntry {
   itemId: string;
+  name?: string;
+  quantity?: number;
   chance: number; // 0-1
 }
 
@@ -285,16 +287,6 @@ export interface XPConfig {
   multiplier: number;
 }
 
-// ==================== 掉落/拾取 ====================
-export interface LootDrop {
-  itemId: string;
-  itemName: string;
-  quantity: number;
-  rarity: Rarity;
-  droppedAt: { x: number; z: number };
-  timestamp: number;
-  pickupBy?: string;
-}
 
 // ==================== 任务系统 ====================
 export interface QuestUpdateEvent {
@@ -498,3 +490,9 @@ export interface CharacterBuffs {
   activeBuffs: Array<{ id: string; statMods: StatModification[]; duration: number; expiresAt: number }>;
   activeDebuffs: Array<{ id: string; statMods: StatModification[]; duration: number; expiresAt: number }>;
 }
+
+// ==================== 战斗系统 ====================
+export { EnemyAIState } from './combat';
+export type { EnemyAI, SkillDef, SkillEffect, SkillCategory } from './combat';
+
+

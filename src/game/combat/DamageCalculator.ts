@@ -62,6 +62,7 @@ export class DamageCalculator {
       damageType,
       element,
       isMelee,
+      rawDamage: 0,
     };
 
     // 闪避判定
@@ -149,7 +150,7 @@ export class DamageCalculator {
         (t.position.x - casterPosition.x) ** 2 + (t.position.z - casterPosition.z) ** 2
       );
       if (dist > skill.areaOfEffect) {
-        return { targetId: t.stats.id ?? 'unknown', calculation: { damage: 0, isCrit: false, isBlocked: false, isDodged: false, damageType: skill.damage.type, element: skill.damage.element } };
+        return { targetId: t.stats.id ?? 'unknown', calculation: { damage: 0, isCrit: false, isBlocked: false, isDodged: false, damageType: skill.damage.type, element: skill.damage.element, rawDamage: 0, isMelee: true } };
       }
       const decay = 1 - (dist / skill.areaOfEffect) * 0.5;
       const calc = this.calculateDamage(

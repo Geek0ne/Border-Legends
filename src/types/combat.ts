@@ -17,6 +17,7 @@ export interface CombatStats {
   critDamage: number;
   dodgeRate: number;
   knockbackResist: number;
+  blockRate: number;
   id?: string;
 }
 
@@ -27,7 +28,9 @@ export interface DamageCalculation {
   isBlocked: boolean;
   isDodged: boolean;
   damageType: 'physical' | 'magic' | 'true';
+    rawDamage: number;
   element: 'none' | 'fire' | 'ice' | 'lightning' | 'nature';
+    isMelee: boolean;
 }
 
 // ==================== 伤害事件 ====================
@@ -83,6 +86,7 @@ export interface SkillDef {
   };
   effects: SkillEffect[];
   icon: string;
+  category?: SkillCategory;
 }
 
 export interface SkillEffect {
@@ -131,6 +135,8 @@ export interface LootDrop {
   quantity: number;
   quality: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
   droppedAt: { x: number; z: number };
+  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+  timestamp?: number;
 }
 
 // ==================== 击杀统计 ====================
@@ -201,3 +207,6 @@ export interface Item {
   // 基础价值
   baseValue?: number;
 }
+
+// Skill Categories
+export type SkillCategory = 'attack' | 'magic' | 'support' | 'utility' | 'passive';

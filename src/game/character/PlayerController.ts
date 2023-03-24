@@ -96,20 +96,21 @@ export class PlayerController {
       moveX /= moveLength;
       moveZ /= moveLength;
 
-      const moveDir = new THREE.Vector3();
       const forward = new THREE.Vector3().copy(cameraForward);
       forward.y = 0; forward.normalize();
       const right = new THREE.Vector3().copy(cameraRight);
       right.y = 0; right.normalize();
 
-      moveDir.addScaledVector(forward, -moveZ);
-      moveDir.addScaledVector(right, moveX);
-      moveDir.normalize();
+      // 计算世界空间的移动方向
+      this.moveDir.set(0, 0, 0);
+      this.moveDir.addScaledVector(forward, -moveZ);
+      this.moveDir.addScaledVector(right, moveX);
+      this.moveDir.normalize();
 
       // 计算目标朝向角
       const camAngle = this.cameraAngleY;
       const baseAngle = Math.atan2(forward.x, forward.z) + camAngle;
-      const moveAngle = Math.atan2(moveDir.x, moveDir.z) + camAngle;
+      const moveAngle = Math.atan2(this.moveDir.x, this.moveDir.z) + camAngle;
 
       let diff = moveAngle - baseAngle;
       while (diff > Math.PI) diff -= Math.PI * 2;
@@ -147,6 +148,7 @@ export class PlayerController {
     }
 
     if (isMoving) {
+      // 使用 this.moveDir（已在上面计算并赋值）
       const moveVector = new THREE.Vector3(
         this.moveDir.x * speed,
         this.physics.velocity.y,

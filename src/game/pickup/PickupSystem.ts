@@ -4,7 +4,8 @@
  */
 
 import * as THREE from 'three';
-import { LootDrop, Rarity } from '../../types';
+import { Rarity } from "../../types";
+import { LootDrop } from "../../types/combat";
 import { ITEM_MAP } from '../../data';
 
 const RARITY_COLORS: Record<Rarity, number> = {
@@ -79,3 +80,4 @@ export class PickupSystem {
 
   public getSize(): number { return this.pickups.size; }
 }
+

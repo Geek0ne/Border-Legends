@@ -42,13 +42,13 @@ function updateHUD(state: PlayerState): void {
     const hpPercent = (state.hp / state.stats.maxHp) * 100;
     hpFill.style.width = hpPercent + '%';
   }
-  if (hpText) hpText.textContent = Math.max(0, state.hp) + `" / "` + state.stats.maxHp;
+  if (hpText) hpText.textContent = Math.max(0, state.hp) + ' / ' + state.stats.maxHp;
 
   if (mpFill) {
     const mpPercent = (state.mp / state.stats.maxMp) * 100;
     mpFill.style.width = mpPercent + '%';
   }
-  if (mpText) mpText.textContent = Math.max(0, state.mp) + `" / "` + state.stats.maxMp;
+  if (mpText) mpText.textContent = Math.max(0, state.mp) + ' / ' + state.stats.maxMp;
 
   if (levelInfo && levelText) {
     levelInfo.classList.remove('hidden');
@@ -76,6 +76,17 @@ function onGameStart(character: CharacterDef): void {
     characterSelectUI.hide();
   }
 
+  // 让游戏画布获取焦点
+  const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+  if (canvas) {
+    canvas.focus();
+    console.log('[GameStart] 画布已获取焦点');
+    
+    // 尝试进入 pointer lock（让鼠标移动能驱动视角控制）
+    canvas.requestPointerLock?.();
+    console.log('[GameStart] 已请求 pointer lock');
+  }
+
   // 更新 HUD
   updateHUD(playerState);
 
@@ -99,11 +110,14 @@ async function main() {
   engine = new GameEngine(canvas);
   await engine.init();
 
-  // 创建角色选择 UI
+  // 创建角色选择 UI（默认显示）
   characterSelectUI = new CharacterSelectUI({
     onCharacterSelected,
     onGameStart,
   });
+  
+  // 确保角色选择界面显示
+  characterSelectUI.show();
 
   console.log('[Main] \u6e38\u620f\u6846\u67b6\u5df2\u521d\u59cb\u5316\u5b8c\u6210');
   console.log('[Main] \u89d2\u8272\u9009\u62e9\u754c\u9762\u5df2\u663e\u793a\u3002\u9009\u62e9\u89d2\u8272\u540e\u70b9\u51fb\u5f00\u59cb\u5192\u9669');

@@ -93,13 +93,13 @@ export class MinimapRenderer {
       // 发光效果
       ctx.beginPath();
       ctx.arc(sx, sy, r + 3, 0, Math.PI * 2);
-      ctx.fillStyle = color + '33';
+      ctx.fillStyle = (typeof color === 'string' ? color : String(color)) + '33';
       ctx.fill();
 
       // 主体
       ctx.beginPath();
       ctx.arc(sx, sy, r, 0, Math.PI * 2);
-      ctx.fillStyle = color;
+      ctx.fillStyle = (typeof color === 'string' ? color : '#' + color.toString(16).padStart(6, '0'));
       ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,0.5)';
       ctx.lineWidth = 1;

@@ -13,7 +13,8 @@ import { SceneManager } from './game/scenes/SceneManager';
 import { InventorySystem } from './systems/InventorySystem';
 import { InputManager } from './input/InputManager';
 import { AudioSystem } from './systems/AudioSystem';
-import { QuestUpdateEvent, HUDState, FloatingText, LootDrop } from './types';
+import { QuestUpdateEvent, HUDState, FloatingText } from './types';
+import { LootDrop } from './types/combat';
 
 export class GameOrchestrator {
   private renderer: THREE.WebGLRenderer;
@@ -224,6 +225,7 @@ export class GameOrchestrator {
           itemName: drop.itemId,
           quantity: 1,
           rarity: 'common',
+          quality: 'common',
           droppedAt: { x: enemy.position.x, z: enemy.position.z },
           timestamp: Date.now(),
         };

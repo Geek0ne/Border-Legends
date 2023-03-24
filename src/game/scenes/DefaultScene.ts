@@ -9,7 +9,6 @@ import { SceneConfig } from '../../types';
 import { CharacterModel, CharacterState } from '../character/CharacterModel';
 import { PlayerController } from '../character/PlayerController';
 import { GroundDetector } from '../collision/GroundDetector';
-import { DefaultScene as MainScene } from './DefaultScene';
 
 // 山地关卡场景配置
 export const mountainSceneConfig: SceneConfig = {

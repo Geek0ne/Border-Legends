@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type {
+import {
   BehaviorNode,
   BehaviorTree,
   BehaviorNodeType,

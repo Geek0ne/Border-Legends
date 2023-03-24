@@ -2,20 +2,28 @@
  * 边境传说 — Three.js 游戏引擎
  * 管理渲染、输入、场景、相机
  * 
- * 修复：相机绕玩家旋转时感觉不对的问题
- * - 先更新玩家位置，再更新相机（消除帧延迟）
- * - 相机目标跟随使用直接赋值而非 lerp（消除轨道滞后）
- * - 优化鼠标 delta 轮询逻辑
+ * 更新 (v1.2):
+ * - 将攻击判定从 PlayerController 中解耦，改为事件驱动
+ * - GameEngine 作为中央事件处理器，负责攻击检测、伤害计算、音效触发
+ * - 优化相机更新顺序（先更新玩家，再更新相机）
  */
 
-import * as THREE from "three";
-import { Renderer } from "./Renderer";
-import { CameraController } from "./CameraController";
-import { InputHandler } from "./InputHandler";
-import { Scene } from "../game/scenes/Scene";
-import { DefaultScene } from "../game/scenes/DefaultScene";
-import { PlayerController } from "../game/character/PlayerController";
-import { CharacterDef } from "../types";
+import * as THREE from 'three';
+import { Renderer } from './Renderer';
+import { CameraController } from './CameraController';
+import { InputHandler } from './InputHandler';
+import { Scene } from '../game/scenes/Scene';
+import { DefaultScene } from '../game/scenes/DefaultScene';
+import { PlayerController, PlayerEvent, PlayerAttackEvent } from '../game/character/PlayerController';
+import { CharacterDef } from '../types';
+
+// 攻击判定配置
+const ATTACK_CONFIG = {
+  range: 3.0,
+  arcAngle: Math.PI / 2, // 90度扇形
+  cooldown: 0.3,
+  hitCooldown: 0.15,
+};
 
 export class GameEngine {
   private renderer: Renderer;
@@ -25,6 +33,11 @@ export class GameEngine {
   private player: THREE.Object3D;
   private playerController: PlayerController | null = null;
   private isRunning: boolean = false;
+
+  // ===== v1.2: 攻击事件系统 =====
+  private attackCooldownTimer: number = 0;
+  private hitCooldownTimer: number = 0;
+  private hitEnemies: Set<string> = new Set(); // 防止单帧重复伤害
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new Renderer(canvas);
@@ -49,9 +62,9 @@ export class GameEngine {
       this.onRender(delta);
     });
 
-    console.log("[GameEngine] 引擎已初始化");
-    console.log("[GameEngine] WASD 移动 | 鼠标控制视角 | 左键攻击");
-    console.log("[GameEngine] Shift 冲刺 | 空格 翻滚 | E 互动");
+    console.log('[GameEngine] 引擎已初始化');
+    console.log('[GameEngine] WASD 移动 | 鼠标控制视角 | 左键攻击');
+    console.log('[GameEngine] Shift 冲刺 | 空格 翻滚 | E 互动');
   }
 
   /**
@@ -71,14 +84,17 @@ export class GameEngine {
     const character = (this.currentScene as any)?.getCharacter?.() as any;
     if (character) {
       this.playerController = new PlayerController(character);
+
+      // ===== v1.2: 订阅玩家攻击事件 =====
+      this.playerController.addEventListener(this.onPlayerEvent);
     }
 
     // 开始渲染循环
     this.isRunning = true;
     this.renderer.start();
 
-    console.log("[GameEngine] 场景加载完成");
-    console.log("[GameEngine] 双击画布锁定鼠标 | 开始游戏");
+    console.log('[GameEngine] 场景加载完成');
+    console.log('[GameEngine] 双击画布锁定鼠标 | 开始游戏');
   }
 
   /**
@@ -118,6 +134,116 @@ export class GameEngine {
     if (this.currentScene) {
       this.currentScene.update(delta);
     }
+  }
+
+  /** ===== v1.2: 玩家事件处理 ===== */
+  private onPlayerEvent = (event: PlayerEvent): void => {
+    switch (event.type) {
+      case 'attack':
+        this.handleAttack(event as PlayerAttackEvent);
+        break;
+      case 'hit':
+        // 命中反馈（浮动文字、音效等）
+        this.handleHit(event);
+        break;
+      default:
+        break;
+    }
+  };
+
+  /**
+   * v1.2: 处理玩家攻击事件
+   * - 在玩家前方扇形范围内检测敌人
+   * - 对范围内的敌人造成攻击伤害
+   */
+  private handleAttack(event: PlayerAttackEvent): void {
+    // 冷却检查
+    if (this.attackCooldownTimer > 0) return;
+    this.attackCooldownTimer = ATTACK_CONFIG.cooldown;
+
+    const playerPos = this.player.position;
+    const playerYaw = this.player.rotation.y;
+    const forward = new THREE.Vector3(
+      Math.sin(playerYaw), 0, Math.cos(playerYaw)
+    ).normalize();
+
+    // 获取场景中所有敌人并检测命中
+    const enemies = (this.currentScene as any)?.getAliveEnemies?.() || [];
+    for (const enemy of enemies) {
+      const dx = enemy.mesh.position.x - playerPos.x;
+      const dz = enemy.mesh.position.z - playerPos.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+
+      if (dist > ATTACK_CONFIG.range) continue;
+
+      // 检查是否在攻击扇形范围内
+      const dirToEnemy = new THREE.Vector3(dx, 0, dz).normalize();
+      const dot = forward.dot(dirToEnemy);
+      const angle = Math.acos(Math.min(1, Math.max(-1, dot)));
+
+      if (angle > ATTACK_CONFIG.arcAngle / 2) continue;
+
+      // 命中！
+      const damage = this.calculateDamage(dist);
+      const enemyKey = enemy.def.id;
+
+      if (this.hitCooldownTimer <= 0) {
+        this.applyDamageToEnemy(enemy, damage);
+        this.hitEnemies.add(enemyKey);
+
+        // 派发命中事件
+        this.playerController?.emit({
+          type: 'hit',
+          timestamp: Date.now(),
+          targetId: enemyKey,
+          damage: damage,
+        });
+      }
+    }
+
+    // 清除已击中的敌人（允许重新攻击）
+    if (this.hitCooldownTimer <= 0) {
+      this.hitCooldownTimer = ATTACK_CONFIG.hitCooldown;
+    }
+  }
+
+  /**
+   * v1.2: 计算伤害值
+   * 基于距离衰减 + 随机浮动
+   */
+  private calculateDamage(distance: number): number {
+    const baseDamage = 10;
+    const distanceFactor = 1 - (distance / ATTACK_CONFIG.range) * 0.5;
+    const randomFactor = 0.8 + Math.random() * 0.4;
+    return Math.round(baseDamage * distanceFactor * randomFactor);
+  }
+
+  /**
+   * v1.2: 对敌人应用伤害
+   */
+  private applyDamageToEnemy(enemy: any, damage: number): void {
+    if (!enemy || !enemy.mesh) return;
+    if (!(enemy as any).isDead) {
+      const hud = (this.currentScene as any)?.getHUDSystem?.();
+      if (hud && typeof hud.addFloatingText === 'function') {
+        hud.addFloatingText('-' + damage, enemy.position.x, enemy.position.z, 0xff4444);
+      }
+      (enemy as any).currentHp -= damage;
+      // 击杀检测
+      if ((enemy as any).currentHp <= 0) {
+        (enemy as any).isDead = true;
+        (enemy as any).mesh.visible = false;
+        console.log('[GameEngine] 击杀敌人:', (enemy as any).def?.name);
+      }
+    }
+  }
+
+  /**
+   * v1.2: 处理命中反馈
+   */
+  private handleHit(event: any): void {
+    // 可以在这里添加命中音效、屏幕闪烁等反馈
+    // 暂留扩展点
   }
 
   /**

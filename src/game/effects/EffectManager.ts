@@ -187,3 +187,5 @@ export class ScreenEffectManager {
     this.activeEffects = [];
   }
 }
+
+export type EffectManager = ParticleEffectManager;

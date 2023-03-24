@@ -1,6 +1,11 @@
 /**
  * 边境传说 - HUD 系统
  * 管理状态栏、等级、金币、任务、浮动文字、战斗日志
+ * 
+ * 更新 (v1.2): 
+ * - 添加 attackLog 用于记录最近战斗日志
+ * - 添加 setCombatState 的持久化控制
+ * - 添加 clearAttackLog 供外部清理
  */
 
 import { HUDState, FloatingText, Quest } from '../../types';
@@ -17,6 +22,10 @@ export class HUDSystem {
   private onFloatingTextsUpdate?: (texts: FloatingText[]) => void;
   private notificationTimeout: number = 0;
   private notificationMsg: string | null = null;
+
+  // ===== v1.2: 攻击日志 =====
+  private attackLog: string[] = [];
+  private maxAttackLogEntries = 50;
 
   public setOnUpdate(cb: (state: HUDState) => void): void { this.onUpdate = cb; }
   public setOnFloatingTextsUpdate(cb: (texts: FloatingText[]) => void): void { this.onFloatingTextsUpdate = cb; }
@@ -68,6 +77,33 @@ export class HUDSystem {
   }
   public setEnemyCount(count: number): void { this.updateState({ enemyCount: count }); }
   public setActiveQuests(quests: Quest[]): void { this.updateState({ activeQuests: quests }); }
-  public setCombatState(combat: boolean): void { this.updateState({ isCombat: combat }); }
+
+  // ===== v1.2: 战斗日志系统 =====
+  private _isCombat: boolean = false;
+  public get isCombat(): boolean { return this._isCombat; }
+
+  public setCombatState(combat: boolean): void { 
+    this._isCombat = combat; 
+    this.updateState({ isCombat: combat });
+  }
+
+  public getAttackLog(): ReadonlyArray<string> {
+    return this.attackLog;
+  }
+
+  public addAttackLog(msg: string): void {
+    this.attackLog.push(msg);
+    if (this.attackLog.length > this.maxAttackLogEntries) {
+      this.attackLog.shift();
+    }
+    // 通知 UI 更新
+    if (this.onUpdate) this.updateState({});
+  }
+
+  public clearAttackLog(): void {
+    this.attackLog = [];
+    if (this.onUpdate) this.updateState({});
+  }
+
   public showNotification(msg: string): void { this.setNotification(msg); }
 }

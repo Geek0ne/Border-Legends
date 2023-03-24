@@ -245,6 +245,12 @@ export class CharacterModel {
   public setTargetYaw(yaw: number): void {
     this.targetYaw = yaw;
   }
+  public getTargetYaw(): number {
+    return this.targetYaw;
+  }
+  public resetStateTime(): void {
+    this.stateTime = 0;
+  }
   public setState(state: CharacterState): void {
     if (this.state !== state) {
       this.state = state;

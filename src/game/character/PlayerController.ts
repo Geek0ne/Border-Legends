@@ -17,6 +17,36 @@ export interface PlayerPhysics {
   isRolling: boolean;
 }
 
+// ===== 事件接口 =====
+export interface PlayerAttackEvent {
+  type: 'attack';
+  timestamp: number;
+}
+
+export interface PlayerHitEvent {
+  type: 'hit';
+  timestamp: number;
+  targetId: string;
+  damage: number;
+}
+
+export interface PlayerDeathEvent {
+  type: 'death';
+  timestamp: number;
+  cause: string;
+}
+
+export interface PlayerLevelUpEvent {
+  type: 'levelUp';
+  timestamp: number;
+  fromLevel: number;
+  toLevel: number;
+}
+
+export type PlayerEvent = PlayerAttackEvent | PlayerHitEvent | PlayerDeathEvent | PlayerLevelUpEvent;
+
+export type PlayerEventListener = (event: PlayerEvent) => void;
+
 export class PlayerController {
   private character: CharacterModel;
   private physics: PlayerPhysics;
@@ -40,6 +70,26 @@ export class PlayerController {
   // 翻滚状态
   private rollTimer: number = 0;
 
+  // ===== 事件系统 =====
+  private listeners: PlayerEventListener[] = [];
+
+  /** 注册事件监听器 */
+  public addEventListener(listener: PlayerEventListener): void {
+    this.listeners.push(listener);
+  }
+
+  /** 移除事件监听器 */
+  public removeEventListener(listener: PlayerEventListener): void {
+    const idx = this.listeners.indexOf(listener);
+    if (idx >= 0) this.listeners.splice(idx, 1);
+  }
+
+  public emit(event: PlayerEvent): void {
+    for (const listener of this.listeners) {
+      listener(event);
+    }
+  }
+
   // 输入
   private currentInput: InputState = {
     forward: false, backward: false, left: false, right: false,
@@ -47,6 +97,12 @@ export class PlayerController {
   };
   // 移动方向
   private moveDir: THREE.Vector3 = new THREE.Vector3();
+
+  // ===== 状态暴露（供 HUD/其他系统读取） =====
+  private _isRolling: boolean = false;
+  private _isSprinting: boolean = false;
+  private _isGrounded: boolean = true;
+  private _isJumping: boolean = false;
 
   constructor(character: CharacterModel, groundDetector?: GroundDetector) {
     this.character = character;
@@ -72,6 +128,7 @@ export class PlayerController {
     this.updateRoll(delta);
     this.updateAttack(delta);
     this.syncCharacter();
+    this.updateStateExpose();
   }
 
   public setInput(input: InputState): void {
@@ -128,7 +185,7 @@ export class PlayerController {
 
     // 决定移动状态
     const isMoving = moveLength > 0;
-    const isSprinting = this.currentInput.sprint && this.physics.isGrounded && isMoving;
+    this._isSprinting = this.currentInput.sprint && this.physics.isGrounded && isMoving;
 
     let speed: number;
     let newState: CharacterState;
@@ -136,7 +193,7 @@ export class PlayerController {
     if (this.physics.isRolling) {
       speed = this.rollSpeed;
       newState = CharacterState.ROLL;
-    } else if (isSprinting) {
+    } else if (this._isSprinting) {
       speed = this.sprintSpeed;
       newState = CharacterState.SPRINT;
     } else if (isMoving) {
@@ -148,7 +205,6 @@ export class PlayerController {
     }
 
     if (isMoving) {
-      // 使用 this.moveDir（已在上面计算并赋值）
       const moveVector = new THREE.Vector3(
         this.moveDir.x * speed,
         this.physics.velocity.y,
@@ -235,13 +291,14 @@ export class PlayerController {
       this.physics.velocity.y = 3;
       this.physics.velocity.x *= 2;
       this.physics.velocity.z *= 2;
+      this._isRolling = true;
       this.character.setState(CharacterState.ROLL);
     }
 
-    if (this.physics.isRolling) {
+    if (this._isRolling) {
       this.rollTimer += delta;
       if (this.rollTimer >= this.rollDuration) {
-        this.physics.isRolling = false;
+        this._isRolling = false;
         this.physics.isGrounded = true;
         this.character.setState(CharacterState.IDLE);
       }
@@ -249,14 +306,20 @@ export class PlayerController {
   }
 
   /**
-   * 处理攻击
+   * 处理攻击 — 改为事件派发
+   * @param delta 帧间隔
    */
   private updateAttack(delta: number): void {
     if (this.currentInput.attack && this.character.getState() !== CharacterState.ATTACK) {
       this.character.setState(CharacterState.ATTACK);
-      // 重置攻击计时器
-      const model = this.character as any;
-      model.stateTime = 0;
+      // 重置攻击计时器（CharacterModel.stateTime）
+      this.character.resetStateTime();
+
+      // 派发攻击事件（由外部系统处理实际伤害计算）
+      this.emit({
+        type: 'attack',
+        timestamp: Date.now(),
+      });
     }
   }
 
@@ -271,6 +334,12 @@ export class PlayerController {
     root.rotation.y = THREE.MathUtils.lerp(root.rotation.y, targetYaw, lerpFactor);
   }
 
+  /** 同步暴露状态 */
+  private updateStateExpose(): void {
+    this._isGrounded = this.physics.isGrounded;
+    this._isJumping = this.physics.isJumping;
+  }
+
   public setCameraAngle(angleY: number): void {
     this.cameraAngleY = angleY;
   }
@@ -282,4 +351,16 @@ export class PlayerController {
   public getCameraAngles(): { x: number; y: number } {
     return { x: this.cameraAngleX, y: this.cameraAngleY };
   }
+
+  // ===== 暴露用 getter =====
+  public getIsRolling(): boolean { return this._isRolling; }
+  public getIsSprinting(): boolean { return this._isSprinting; }
+  public getIsGrounded(): boolean { return this._isGrounded; }
+  public getIsJumping(): boolean { return this._isJumping; }
+
+  // ===== v1.2: 事件系统公开方法 =====
+  public getListeners(): ReadonlyArray<PlayerEventListener> {
+    return this.listeners;
+  }
 }
+

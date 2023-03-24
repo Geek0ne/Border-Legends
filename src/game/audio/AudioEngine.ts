@@ -5,7 +5,7 @@
 
 export type SoundType =
   | 'hit' | 'death' | 'levelup' | 'drop' | 'pickup'
-  | 'skill' | 'menu' | 'door' | 'coin' | 'explosion';
+  | 'skill' | 'menu' | 'door' | 'coin' | 'explosion' | 'spawn' | 'attack';
 
 export interface SoundConfig {
   frequency: number;
@@ -167,6 +167,36 @@ export const PROCEDURAL_SOUNDS: Record<SoundType, (ctx: AudioContext) => void> =
     source.connect(gain).connect(ctx.destination);
     source.start();
   },
+  spawn: (ctx) => {
+    const bufferSize = ctx.sampleRate * 0.3;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.sin(i / ctx.sampleRate * Math.PI * 2 * 800) * Math.pow(1 - i / bufferSize, 2);
+    }
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    source.connect(gain).connect(ctx.destination);
+    source.start();
+  },
+  attack: (ctx) => {
+    const bufferSize = ctx.sampleRate * 0.15;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.sin(i / ctx.sampleRate * Math.PI * 2 * 200) * Math.pow(1 - i / bufferSize, 1.5);
+    }
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.6, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    source.connect(gain).connect(ctx.destination);
+    source.start();
+  },
 };
 
 export class AudioEngine {
@@ -203,6 +233,13 @@ export class AudioEngine {
   /**
    * 播放程序化音效
    */
+
+  /**
+   * 播放音效（别名，兼容 EnemyManager 的调用方式）
+   */
+  play(type: SoundType): void {
+    this.playSound(type);
+  }
   playSound(type: SoundType): void {
     if (!this.isInitialized || this.muted || !this.ctx) return;
 
@@ -391,3 +428,4 @@ export class AudioEngine {
     this.isInitialized = false;
   }
 }
+

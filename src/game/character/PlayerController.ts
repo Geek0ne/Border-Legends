@@ -229,9 +229,8 @@ export class PlayerController {
    * 处理翻滚
    */
   private updateRoll(delta: number): void {
-    if (this.currentInput.jump && this.physics.isGrounded && !this.physics.isRolling) {
-      this.physics.isRolling = true;
-      this.rollTimer = 0;
+    // 翻滚触发：sprint + jump 同时按下，与跳跃区分开
+    if (this.currentInput.sprint && this.currentInput.jump && this.physics.isGrounded && !this.physics.isRolling) {
       this.physics.isGrounded = false;
       this.physics.velocity.y = 3;
       this.physics.velocity.x *= 2;
@@ -266,8 +265,10 @@ export class PlayerController {
    */
   private syncCharacter(): void {
     const root = this.character.getRoot();
-    const targetYaw = this.character.getRoot().rotation.y;
-    root.rotation.y = THREE.MathUtils.lerp(root.rotation.y, targetYaw, 0.15);
+    const targetYaw = this.character.getTargetYaw();
+    // delta-independent exponential interpolation at 15 rad/s
+    const lerpFactor = 1 - Math.pow(0.15, 60 * 0.016);
+    root.rotation.y = THREE.MathUtils.lerp(root.rotation.y, targetYaw, lerpFactor);
   }
 
   public setCameraAngle(angleY: number): void {

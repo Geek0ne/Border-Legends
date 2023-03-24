@@ -228,3 +228,158 @@ export class SkillManager {
     }
   }
 }
+
+// ==================== 技能组合系统 ====================
+export interface SkillCombo {
+  id: string;
+  name: string;
+  description: string;
+  sequence: string[]; // 技能ID序列
+  maxTimeWindow: number; // 最大时间窗口（秒）
+  activationCooldown: number;
+  effect: {
+    type: 'buff' | 'debuff' | 'damage' | 'heal' | 'special';
+    value: number;
+    duration?: number;
+    statusType?: StatusType;
+  };
+  icon: string;
+}
+
+export interface ActiveCombo {
+  comboId: string;
+  sequenceIndex: number;
+  lastUsedAt: number;
+  isActive: boolean;
+}
+
+export class SkillComboManager {
+  private combos: Map<string, SkillCombo> = new Map();
+  private activeCombos: Map<string, ActiveCombo> = new Map();
+  private recentSkills: Array<{ skillId: string; timestamp: number }> = [];
+  private maxRecentSkills: number = 10;
+
+  addCombo(combo: SkillCombo): void {
+    this.combos.set(combo.id, combo);
+  }
+
+  recordSkillUsage(skillId: string): void {
+    const now = Date.now();
+    this.recentSkills.push({ skillId, timestamp: now });
+    // 保持最近技能列表大小
+    if (this.recentSkills.length > this.maxRecentSkills) {
+      this.recentSkills.shift();
+    }
+    // 清理超时记录
+    const cutoff = now - 5000;
+    this.recentSkills = this.recentSkills.filter((s) => s.timestamp > cutoff);
+    // 检查触发组合
+    this.checkCombos();
+  }
+
+  private checkCombos(): void {
+    const recentIds = this.recentSkills.map((s) => s.skillId);
+    for (const [comboId, combo] of this.combos) {
+      const sequence = combo.sequence;
+      const seqLen = sequence.length;
+      const recentLen = recentIds.length;
+      if (recentLen < seqLen) continue;
+
+      const tail = recentIds.slice(-seqLen);
+      const matches = tail.every((s, i) => s === sequence[i]);
+      if (matches) {
+        this.activateCombo(comboId);
+      }
+    }
+  }
+
+  private activateCombo(comboId: string): void {
+    const combo = this.combos.get(comboId);
+    if (!combo) return;
+    this.activeCombos.set(comboId, {
+      comboId,
+      sequenceIndex: 0,
+      lastUsedAt: Date.now(),
+      isActive: true,
+    });
+  }
+
+  getActiveCombo(comboId: string): ActiveCombo | undefined {
+    return this.activeCombos.get(comboId);
+  }
+
+  getAllCombos(): SkillCombo[] {
+    return Array.from(this.combos.values());
+  }
+}
+
+// ==================== 被动技能系统 ====================
+export interface PassiveSkillDef {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  // 被动效果类型
+  effectType:
+    | 'statBonus'
+    | 'damageModifier'
+    | 'healModifier'
+    | 'critChance'
+    | 'dodgeChance'
+    | 'xpBonus'
+    | 'goldBonus'
+    | 'cooldownReduction'
+    | 'mpRegen'
+    | 'hpRegen';
+  // 效果值
+  value: number;
+  // 百分比加成（如果是 statBonus）
+  statBonus?: Record<string, number>;
+  // 触发条件
+  triggerCondition?: string;
+  // 层数
+  stackable?: boolean;
+  maxStacks?: number;
+}
+
+export interface PassiveSkillActive {
+  skillId: string;
+  currentStacks: number;
+  isActive: boolean;
+}
+
+// ==================== 技能树系统 ====================
+export interface SkillTreeNode {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  // 节点类型：解锁技能/被动/组合
+  nodeType: 'skill' | 'passive' | 'combo' | 'branch' | 'reward';
+  // 解锁的技能ID
+  unlocksSkillId?: string;
+  unlocksPassiveId?: string;
+  unlocksComboId?: string;
+  // 前置节点
+  prerequisites: string[];
+  // 升级所需点数
+  cost: number;
+  // 节点位置（用于 UI 渲染）
+  position: { x: number; y: number };
+  // 最大等级
+  maxLevel: number;
+  // 当前等级
+  currentLevel?: number;
+}
+
+export interface SkillTreeConfig {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  nodes: SkillTreeNode[];
+  // 可分配的最大点数
+  maxPoints: number;
+  // 树分类：战士/法师/辅助
+  class: 'warrior' | 'mage' | 'support' | 'hybrid';
+}

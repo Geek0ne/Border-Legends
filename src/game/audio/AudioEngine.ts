@@ -286,7 +286,8 @@ export class AudioEngine {
   }
 
   /**
-   * 切换 BGM
+   * 切换 BGM（真实交叉淡入淡出）
+   * 旧曲淡出 → 停止；新曲从 0 淡入到目标音量
    */
   crossfadeBGM(newUrl: string, duration: number = 2): void {
     if (!this.currentBGM) {
@@ -294,8 +295,57 @@ export class AudioEngine {
       return;
     }
 
-    // TODO: 实现交叉淡入淡出
-    this.playBGM(newUrl);
+    const oldAudio = this.currentBGM;
+    const targetVolume = this.bgmVolume * this.masterVolume;
+    const steps = 20;
+    const stepMs = (duration * 1000) / steps;
+    const startVolume = oldAudio.volume;
+
+    // 旧曲淡出
+    let i = 0;
+    const fadeOut = window.setInterval(() => {
+      i++;
+      const k = i / steps;
+      oldAudio.volume = Math.max(0, startVolume * (1 - k));
+      if (i >= steps) {
+        window.clearInterval(fadeOut);
+        oldAudio.pause();
+      }
+    }, stepMs);
+
+    // 新曲淡入（重置状态，避免与旧曲重叠过响）
+    this.currentBGM = null;
+    const audio = new Audio(newUrl);
+    audio.loop = true;
+    audio.volume = 0;
+    audio.addEventListener('canplaythrough', () => {
+      audio.play().catch(() => {});
+      let j = 0;
+      const fadeIn = window.setInterval(() => {
+        j++;
+        audio.volume = Math.min(targetVolume, targetVolume * (j / steps));
+        if (j >= steps) window.clearInterval(fadeIn);
+      }, stepMs);
+    }, { once: true });
+    this.currentBGM = audio;
+  }
+
+  /**
+   * 按主题播放 BGM（带资源映射，文件缺失时静默降级）
+   */
+  playTheme(theme: string, volume: number = 0.5): void {
+    const tracks: Record<string, string> = {
+      mountain: '/assets/audio/meadow_thoughts.ogg',
+      jungle: '/assets/audio/happy_adventure.mp3',
+      city: '/assets/audio/meadow_thoughts.ogg',
+    };
+    const url = tracks[theme];
+    if (!url) return;
+    if (!this.currentBGM) {
+      this.playBGM(url, volume);
+    } else {
+      this.crossfadeBGM(url, 2);
+    }
   }
 
   /**

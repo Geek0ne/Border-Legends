@@ -13,6 +13,7 @@ import { SceneManager } from './game/scenes/SceneManager';
 import { InventorySystem } from './systems/InventorySystem';
 import { InputManager } from './input/InputManager';
 import { AudioSystem } from './systems/AudioSystem';
+import { AmbientAudio } from './game/audio/AmbientAudio';
 import { QuestUpdateEvent, HUDState, FloatingText } from './types';
 import { LootDrop } from './types/combat';
 
@@ -33,6 +34,7 @@ export class GameOrchestrator {
   private inventorySystem: InventorySystem;
   private inputManager: InputManager;
   private audioSystem: AudioSystem;
+  private ambientAudio: AmbientAudio = new AmbientAudio();
 
   // 状态
   private isRunning: boolean = false;
@@ -86,6 +88,23 @@ export class GameOrchestrator {
     this.isRunning = true;
     this.clock.start();
     this.animate();
+
+    // 音频：主题 BGM + 环境音（首次用户手势后生效）
+    this.audioSystem.playTheme('mountain');
+    const engineCtx = (this.audioSystem as unknown as { engine?: { ctx?: AudioContext } }).engine?.ctx;
+    if (engineCtx) {
+      this.ambientAudio.start(engineCtx);
+    } else {
+      // 尚未初始化时，首次点击后补启环境音
+      const boot = () => {
+        this.audioSystem.playTheme('mountain');
+        const ctx = (this.audioSystem as unknown as { engine?: { ctx?: AudioContext } }).engine?.ctx;
+        if (ctx) this.ambientAudio.start(ctx);
+        window.removeEventListener('pointerdown', boot);
+      };
+      window.addEventListener('pointerdown', boot, { once: true });
+    }
+
     console.log('[GameOrchestrator] 游戏启动');
   }
 
@@ -94,6 +113,8 @@ export class GameOrchestrator {
    */
   public stop(): void {
     this.isRunning = false;
+    this.ambientAudio.stop();
+    this.audioSystem.stopBgm();
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
     }

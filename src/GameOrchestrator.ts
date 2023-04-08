@@ -14,6 +14,7 @@ import { InventorySystem } from './systems/InventorySystem';
 import { InputManager } from './input/InputManager';
 import { AudioSystem } from './systems/AudioSystem';
 import { AmbientAudio } from './game/audio/AmbientAudio';
+import { CombatFeedback } from './game/effects/CombatFeedback';
 import { QuestUpdateEvent, HUDState, FloatingText } from './types';
 import { LootDrop } from './types/combat';
 
@@ -35,6 +36,7 @@ export class GameOrchestrator {
   private inputManager: InputManager;
   private audioSystem: AudioSystem;
   private ambientAudio: AmbientAudio = new AmbientAudio();
+  private combatFeedback: CombatFeedback;
 
   // 状态
   private isRunning: boolean = false;
@@ -64,6 +66,7 @@ export class GameOrchestrator {
     this.sceneManager = new SceneManager();
     this.inputManager = new InputManager();
     this.audioSystem = new AudioSystem();
+    this.combatFeedback = new CombatFeedback(this.scene);
 
     // 连接子系统事件
     this.hud.setOnFloatingTextsUpdate((texts: FloatingText[]) => {
@@ -153,8 +156,10 @@ export class GameOrchestrator {
     // 更新敌人
     this.enemyManager.tick(delta);
 
-    // 更新拾取物
+    // 拾取物/特效
     this.pickupSystem.tick(delta);
+    this.combatFeedback.update(delta);
+    this.combatFeedback.applyCameraShake(this.camera, delta);
 
     // 自动拾取
     const playerPos = this.getApproximatePlayerPosition();
@@ -205,6 +210,7 @@ export class GameOrchestrator {
     const playerPos = this.getApproximatePlayerPosition();
     if (!playerPos) return;
 
+    this.audioSystem.playSfx('attack');
     const enemiesInRange = this.enemyManager.getEnemiesInRange(playerPos);
     let hitAny = false;
     for (const enemy of enemiesInRange) {
@@ -217,6 +223,13 @@ export class GameOrchestrator {
         const killed = this.enemyManager.applyDamage(enemy, damage, this.hud);
         this.hud.addFloatingText(damage.toString(), playerPos.x + dx, playerPos.z + dz, 0xffdd44);
         hitAny = true;
+
+        // 打击反馈：火花 + 斩击光环 + 震屏 + 命中音效
+        const hitPoint = new THREE.Vector3(
+          playerPos.x + dx * 0.7, 1.1, playerPos.z + dz * 0.7
+        );
+        this.combatFeedback.hit(hitPoint, killed ? 1.5 : 1);
+        this.audioSystem.playSfx(killed ? 'death' : 'hit');
 
         if (killed) {
           // 获得经验

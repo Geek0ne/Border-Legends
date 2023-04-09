@@ -15,6 +15,7 @@ import { InputManager } from './input/InputManager';
 import { AudioSystem } from './systems/AudioSystem';
 import { AmbientAudio } from './game/audio/AmbientAudio';
 import { CombatFeedback } from './game/effects/CombatFeedback';
+import { MinimapRenderer, MinimapEntity } from './game/hud/MinimapRenderer';
 import { QuestUpdateEvent, HUDState, FloatingText } from './types';
 import { LootDrop } from './types/combat';
 
@@ -37,6 +38,8 @@ export class GameOrchestrator {
   private audioSystem: AudioSystem;
   private ambientAudio: AmbientAudio = new AmbientAudio();
   private combatFeedback: CombatFeedback;
+  private minimap: MinimapRenderer | null = null;
+  private canvas2D: HTMLCanvasElement;
 
   // 状态
   private isRunning: boolean = false;
@@ -67,6 +70,11 @@ export class GameOrchestrator {
     this.inputManager = new InputManager();
     this.audioSystem = new AudioSystem();
     this.combatFeedback = new CombatFeedback(this.scene);
+
+    // 小地图（离屏画布，合入 HUD 叠加层）
+    this.canvas2D = canvas2D;
+    const minimapCanvas = document.createElement('canvas');
+    this.minimap = new MinimapRenderer(minimapCanvas, 180, 180);
 
     // 连接子系统事件
     this.hud.setOnFloatingTextsUpdate((texts: FloatingText[]) => {
@@ -169,6 +177,21 @@ export class GameOrchestrator {
 
     // 检查任务目标
     this.questManager.checkObjectives();
+
+    // 小地图数据
+    if (this.minimap && playerPos) {
+      const dir = new THREE.Vector3();
+      this.camera.getWorldDirection(dir);
+      const angle = Math.atan2(dir.x, dir.z);
+      const entities: MinimapEntity[] = [
+        { x: playerPos.x, z: playerPos.z, type: 'player' },
+        ...this.enemyManager.getEnemiesInRange(playerPos).map((e: any) => ({
+          x: e.position.x, z: e.position.z, type: 'enemy' as const,
+        })),
+      ];
+      this.minimap.setEntities(entities);
+      this.minimap.setPlayerPosition(playerPos.x, playerPos.z, angle);
+    }
   }
 
   /**
@@ -179,6 +202,13 @@ export class GameOrchestrator {
     this.renderer.render(this.scene, this.camera);
     // 浮动文字层（通过 Canvas2D 渲染）
     this.floatingTextRenderer.render();
+    // 小地图叠加到 HUD 右上角
+    if (this.minimap) {
+      const ctx2d = this.canvas2D.getContext('2d');
+      if (ctx2d) {
+        ctx2d.drawImage(this.minimap.getCanvas(), this.canvas2D.width - 196, 16);
+      }
+    }
   }
 
   /**

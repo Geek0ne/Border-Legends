@@ -15,7 +15,9 @@ export class HUDSystem {
     hp: 100, maxHp: 100, mp: 50, maxMp: 50,
     xp: 0, xpToNext: 100, level: 1, gold: 0,
     enemyCount: 0, activeQuests: [], isCombat: false, isPaused: false, isMenuOpen: false,
+    combo: 0, comboMax: 0,
   };
+  private comboTimer: number = 0;
   private floatingTexts: FloatingText[] = [];
   private maxFloatingTexts = 20;
   private onUpdate?: (state: HUDState) => void;
@@ -57,6 +59,30 @@ export class HUDSystem {
     for (const ft of this.floatingTexts) ft.lifetime -= dt;
     this.floatingTexts = this.floatingTexts.filter(ft => ft.lifetime > 0);
     if (this.onFloatingTextsUpdate) this.onFloatingTextsUpdate(this.floatingTexts);
+
+    // 连击衰减：2.5 秒内没有新命中则清零
+    if (this.state.combo > 0) {
+      this.comboTimer -= dt;
+      if (this.comboTimer <= 0) this.clearCombo();
+    }
+  }
+
+  /** 命中登记：连击 +1 并刷新衰减计时，返回伤害倍率 */
+  public registerHit(): number {
+    this.state.combo += 1;
+    this.state.comboMax = Math.max(this.state.comboMax, this.state.combo);
+    this.comboTimer = 2.5;
+    if (this.onUpdate) this.onUpdate(this.state);
+    return 1 + Math.min(this.state.combo, 25) * 0.04;
+  }
+
+  public getCombo(): number { return this.state.combo; }
+
+  public clearCombo(): void {
+    if (this.state.combo !== 0) {
+      this.state.combo = 0;
+      if (this.onUpdate) this.onUpdate(this.state);
+    }
   }
 
   public updateHP(hp: number, maxHp: number): void { this.updateState({ hp, maxHp }); }

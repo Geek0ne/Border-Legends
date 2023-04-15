@@ -272,6 +272,8 @@ export interface HUDState {
   isCombat: boolean;
   isPaused: boolean;
   isMenuOpen: boolean;
+  combo: number;
+  comboMax: number;
 }
 
 export interface FloatingText {

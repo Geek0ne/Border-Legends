@@ -248,11 +248,18 @@ export class GameOrchestrator {
       const dz = enemy.position.z - playerPos.z;
       const dist = Math.sqrt(dx * dx + dz * dz);
       if (dist <= 5) {
-        // 模拟伤害
-        const damage = Math.max(1, 10 - enemy.def.defense);
+        // 连击伤害倍率（每次命中 +4%，上限 +100%）
+        const multiplier = this.hud.registerHit();
+        const damage = Math.max(1, Math.round((10 - enemy.def.defense) * multiplier));
         const killed = this.enemyManager.applyDamage(enemy, damage, this.hud);
         this.hud.addFloatingText(damage.toString(), playerPos.x + dx, playerPos.z + dz, 0xffdd44);
         hitAny = true;
+
+        // 里程碑连击提示
+        const combo = this.hud.getCombo();
+        if (combo > 1 && combo % 5 === 0) {
+          this.hud.addFloatingText(`连击 x${combo}`, playerPos.x, playerPos.z, 0xff8833);
+        }
 
         // 打击反馈：火花 + 斩击光环 + 震屏 + 命中音效
         const hitPoint = new THREE.Vector3(

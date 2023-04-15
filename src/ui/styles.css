@@ -553,3 +553,23 @@ body {
 
 /* ========== 隐藏 ========== */
 .hidden { display: none !important; }
+
+/* ===== 连击计数 ===== */
+#combo-text {
+  position: absolute;
+  top: 90px;
+  right: 220px;
+  font-size: 30px;
+  font-weight: 900;
+  font-style: italic;
+  color: #ffb347;
+  text-shadow: 0 0 12px rgba(255, 140, 40, 0.85), 0 2px 4px rgba(0, 0, 0, 0.7);
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  pointer-events: none;
+}
+#combo-text.active {
+  opacity: 1;
+  transform: scale(1);
+}

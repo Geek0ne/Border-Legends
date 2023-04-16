@@ -135,6 +135,21 @@ export class EnemyManager {
     this.hud.setEnemyCount(this.enemies.filter((e) => !e.isDead).length);
   }
 
+  /** 兼容旧调用：回收死亡敌人 */
+  public tick(delta: number): void {
+    this.despawnDeadEnemies(delta);
+  }
+
+  /** 取走并清空敌人攻击的待结算伤害（供玩家侧扣血） */
+  public consumeAttackMarks(): Array<{ amount: number; timestamp: number }> {
+    const marks: Array<{ amount: number; timestamp: number }> = [];
+    for (const list of this.damageMarks.values()) {
+      for (const m of list) marks.push({ amount: m.amount, timestamp: m.timestamp });
+    }
+    this.damageMarks.clear();
+    return marks;
+  }
+
   public getAliveEnemies(): EnemyInstance[] { return this.enemies.filter((e) => !e.isDead); }
   public getEnemyCount(): number { return this.enemies.filter((e) => !e.isDead).length; }
   public getEnemyByIndex(index: number): EnemyInstance | undefined { return this.enemies[index]; }

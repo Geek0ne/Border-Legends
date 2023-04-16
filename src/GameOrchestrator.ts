@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { HUDSystem } from './game/hud/HUDSystem';
 import { FloatingTextRenderer } from './game/hud/FloatingTextRenderer';
-import { EnemyManager } from './game/enemy/EnemyManager';
+import { EnemyManager } from './game/enemies/EnemyManager';
 import { QuestManager } from './game/quest/QuestManager';
 import { PickupSystem } from './game/pickup/PickupSystem';
 import { SceneManager } from './game/scenes/SceneManager';
@@ -161,8 +161,28 @@ export class GameOrchestrator {
     // 更新 HUD
     this.hud.tick(delta);
 
-    // 更新敌人
+    const playerPos = this.getApproximatePlayerPosition();
+
+    // 敌人 AI 行为（巡逻/警戒/追击/攻击/逃跑）
+    if (playerPos) {
+      this.enemyManager.updateAI(delta, playerPos, true);
+    }
     this.enemyManager.tick(delta);
+
+    // 敌人攻击 → 玩家受伤结算
+    for (const mark of this.enemyManager.consumeAttackMarks()) {
+      const st = this.hud.getState();
+      const newHp = Math.max(0, st.hp - mark.amount);
+      this.hud.updateState({ hp: newHp });
+      this.hud.addFloatingText(`-${mark.amount}`, playerPos?.x ?? 0, playerPos?.z ?? 0, 0xff4444);
+      this.combatFeedback.addShake(0.18, 0.2);
+      this.audioSystem.playSfx('hit');
+      if (newHp <= 0) {
+        this.hud.updateState({ hp: st.maxHp });
+        this.hud.clearCombo();
+        this.hud.showNotification('你被击倒了……在营地复活');
+      }
+    }
 
     // 拾取物/特效
     this.pickupSystem.tick(delta);
@@ -170,7 +190,6 @@ export class GameOrchestrator {
     this.combatFeedback.applyCameraShake(this.camera, delta);
 
     // 自动拾取
-    const playerPos = this.getApproximatePlayerPosition();
     if (playerPos) {
       this.pickupSystem.checkAutoPickup(playerPos);
     }

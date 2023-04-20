@@ -3,11 +3,8 @@
 > **一款基于 Three.js 的 3D 开放世界冒险动作 RPG**
 > 技术栈：Three.js + TypeScript + Vite + Rapier.js
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-%233178C6)](https://www.typescriptlang.org/)
-[![Three.js](https://img.shields.io/badge/Three.js-0.170-000000?logo=three.js)](https://threejs.org/)
-[![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?logo=vite)](https://vitejs.dev/)
-[![Rapier](https://img.shields.io/badge/Rapier-0.14-FF6B35)](https://rapier.rs/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)[![Three.js](https://img.shields.io/badge/Three.js-0.170-000000?logo=three.js&logoColor=white)](https://threejs.org/)[![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?logo=vite)](https://vitejs.dev/)
+[![Rapier](https://img.shields.io/badge/Rapier-0.14-FF6B35)](https://rapier.rs/)[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
 

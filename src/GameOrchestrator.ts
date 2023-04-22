@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { HUDSystem } from './game/hud/HUDSystem';
 import { FloatingTextRenderer } from './game/hud/FloatingTextRenderer';
 import { EnemyManager } from './game/enemies/EnemyManager';
+import { EnemySpawner } from './game/enemies/EnemyFactory';
 import { QuestManager } from './game/quest/QuestManager';
 import { PickupSystem } from './game/pickup/PickupSystem';
 import { SceneManager } from './game/scenes/SceneManager';
@@ -30,6 +31,7 @@ export class GameOrchestrator {
   private hud: HUDSystem;
   private floatingTextRenderer: FloatingTextRenderer;
   private enemyManager: EnemyManager;
+  private enemySpawner: EnemySpawner;
   private questManager: QuestManager;
   private pickupSystem: PickupSystem;
   private sceneManager: SceneManager;
@@ -63,6 +65,7 @@ export class GameOrchestrator {
     this.floatingTextRenderer.setCamera(camera);
 
     this.enemyManager = new EnemyManager(this.hud);
+    this.enemySpawner = new EnemySpawner(this.enemyManager, this.scene, { targetCount: 12 });
     this.inventorySystem = new InventorySystem(50);
     this.questManager = new QuestManager(this.hud, this.inventorySystem);
     this.pickupSystem = new PickupSystem();
@@ -168,6 +171,7 @@ export class GameOrchestrator {
       this.enemyManager.updateAI(delta, playerPos, true);
     }
     this.enemyManager.tick(delta);
+    this.enemySpawner.tick(delta, playerPos ?? null);
 
     // 敌人攻击 → 玩家受伤结算
     for (const mark of this.enemyManager.consumeAttackMarks()) {

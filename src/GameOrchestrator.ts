@@ -8,6 +8,7 @@ import { HUDSystem } from './game/hud/HUDSystem';
 import { FloatingTextRenderer } from './game/hud/FloatingTextRenderer';
 import { EnemyManager } from './game/enemies/EnemyManager';
 import { EnemySpawner } from './game/enemies/EnemyFactory';
+import { CollectibleSpawner } from './game/pickup/CollectibleSpawner';
 import { QuestManager } from './game/quest/QuestManager';
 import { PickupSystem } from './game/pickup/PickupSystem';
 import { SceneManager } from './game/scenes/SceneManager';
@@ -32,6 +33,7 @@ export class GameOrchestrator {
   private floatingTextRenderer: FloatingTextRenderer;
   private enemyManager: EnemyManager;
   private enemySpawner: EnemySpawner;
+  private collectibles: CollectibleSpawner;
   private questManager: QuestManager;
   private pickupSystem: PickupSystem;
   private sceneManager: SceneManager;
@@ -65,7 +67,9 @@ export class GameOrchestrator {
     this.floatingTextRenderer.setCamera(camera);
 
     this.enemyManager = new EnemyManager(this.hud);
-    this.enemySpawner = new EnemySpawner(this.enemyManager, this.scene, { targetCount: 12 });
+    const heightAt = (x: number, z: number) => this.sampleGroundY(x, z);
+    this.enemySpawner = new EnemySpawner(this.enemyManager, this.scene, { targetCount: 12, heightAt });
+    this.collectibles = new CollectibleSpawner(this.scene, { count: 18, heightAt });
     this.inventorySystem = new InventorySystem(50);
     this.questManager = new QuestManager(this.hud, this.inventorySystem);
     this.pickupSystem = new PickupSystem();
@@ -190,6 +194,7 @@ export class GameOrchestrator {
 
     // 拾取物/特效
     this.pickupSystem.tick(delta);
+    this.collectibles.tick(delta);
     this.combatFeedback.update(delta);
     this.combatFeedback.applyCameraShake(this.camera, delta);
 
@@ -335,6 +340,17 @@ export class GameOrchestrator {
     const playerPos = this.getApproximatePlayerPosition();
     if (!playerPos) return;
 
+    // 采集
+    const collectible = this.collectibles.findNearby(playerPos, 3.2);
+    if (collectible) {
+      this.collectibles.gather(collectible);
+      this.inventorySystem.addItem(collectible.itemId);
+      this.hud.addFloatingText('+' + collectible.name, playerPos.x, playerPos.z, 0x66ff99);
+      this.audioSystem.playSfx('pickup');
+      this.hud.showNotification('采集: ' + collectible.name);
+      return;
+    }
+
     // 检查附近的敌人
     const enemiesInRange = this.enemyManager.getEnemiesInRange(playerPos);
     for (const enemy of enemiesInRange) {
@@ -354,6 +370,15 @@ export class GameOrchestrator {
     // 简化：从相机位置推断
     const pos = this.camera.position;
     return { x: pos.x, z: pos.z };
+  }
+
+  /** 射线采样地表高度（怪物/采集物贴地放置） */
+  private sampleGroundY(x: number, z: number): number {
+    const ray = new THREE.Raycaster(
+      new THREE.Vector3(x, 60, z), new THREE.Vector3(0, -1, 0), 0.1, 120
+    );
+    const hits = ray.intersectObjects(this.scene.children, true);
+    return hits.length > 0 ? hits[0].point.y : 0;
   }
 
   /**

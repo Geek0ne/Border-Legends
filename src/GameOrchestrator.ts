@@ -9,6 +9,7 @@ import { FloatingTextRenderer } from './game/hud/FloatingTextRenderer';
 import { EnemyManager } from './game/enemies/EnemyManager';
 import { EnemySpawner } from './game/enemies/EnemyFactory';
 import { CollectibleSpawner } from './game/pickup/CollectibleSpawner';
+import { ROCK_GIANT_DEF } from './data/enemies/EnemyDefs';
 import { QuestManager } from './game/quest/QuestManager';
 import { PickupSystem } from './game/pickup/PickupSystem';
 import { SceneManager } from './game/scenes/SceneManager';
@@ -70,6 +71,8 @@ export class GameOrchestrator {
     const heightAt = (x: number, z: number) => this.sampleGroundY(x, z);
     this.enemySpawner = new EnemySpawner(this.enemyManager, this.scene, { targetCount: 12, heightAt });
     this.collectibles = new CollectibleSpawner(this.scene, { count: 18, heightAt });
+    // 山地关卡 Boss：岩巨人（固定刷新在东北高地）
+    this.enemySpawner.spawnBoss(ROCK_GIANT_DEF, 42, -42);
     this.inventorySystem = new InventorySystem(50);
     this.questManager = new QuestManager(this.hud, this.inventorySystem);
     this.pickupSystem = new PickupSystem();
@@ -205,6 +208,21 @@ export class GameOrchestrator {
 
     // 检查任务目标
     this.questManager.checkObjectives();
+
+    // Boss 血条（存活即显示）
+    const boss = this.enemyManager.getAliveEnemies().find((e) => e.def.type === 'boss');
+    const bossBar = document.getElementById('boss-bar');
+    const bossFill = document.getElementById('boss-hp-fill');
+    const bossName = document.getElementById('boss-name');
+    if (bossBar && bossFill) {
+      if (boss) {
+        bossBar.classList.remove('hidden');
+        bossFill.style.width = Math.max(0, (boss.currentHp / boss.maxHp) * 100) + '%';
+        if (bossName) bossName.textContent = boss.def.name;
+      } else {
+        bossBar.classList.add('hidden');
+      }
+    }
 
     // 小地图数据
     if (this.minimap && playerPos) {

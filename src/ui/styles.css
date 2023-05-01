@@ -573,3 +573,37 @@ body {
   opacity: 1;
   transform: scale(1);
 }
+
+/* ===== Boss 血条 ===== */
+#boss-bar {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 560px;
+  max-width: 70vw;
+  text-align: center;
+  pointer-events: none;
+}
+#boss-name {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: #ffd9a0;
+  text-shadow: 0 0 10px rgba(255, 120, 40, 0.8), 0 2px 4px rgba(0, 0, 0, 0.8);
+  margin-bottom: 5px;
+}
+.boss-track {
+  height: 14px;
+  border: 2px solid rgba(255, 170, 90, 0.75);
+  border-radius: 7px;
+  background: rgba(30, 10, 6, 0.75);
+  overflow: hidden;
+  box-shadow: 0 0 16px rgba(255, 100, 40, 0.35);
+}
+#boss-hp-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #ff4d2e, #ff9a3d);
+  transition: width 0.25s ease;
+}

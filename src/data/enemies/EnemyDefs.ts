@@ -185,9 +185,31 @@ export const WYVERN_DEF: BossDef = {
 
 // ==================== 汇总 ====================
 
+/** 山地关卡 Boss（README 第一关：岩巨人） */
+export const ROCK_GIANT_DEF: BossDef = {
+  id: 'rock_giant',
+  name: '岩巨人',
+  type: 'boss',
+  hp: 600,
+  attack: 32,
+  defense: 20,
+  speed: 3,
+  drops: {
+    items: [
+      { itemId: 'rock_core', chance: 1.0 },
+      { itemId: 'granite_shard', chance: 0.6 },
+      { itemId: 'rare_gem', chance: 0.35 },
+    ],
+  },
+  phaseCount: 2,
+  phaseHPThresholds: [0.5],
+  specialAbilities: ['ground_slam', 'boulder_throw'],
+  arenaId: 'mountain_pass',
+};
+
 export const NORMAL_ENEMIES: EnemyDef[] = [SKELETON_DEF, WOLF_DEF, SLIME_DEF, GHOUL_DEF];
 export const ELITE_ENEMIES: EnemyDef[] = [ELITE_SKELETON_KNIGHT_DEF, WOLF_ALPHA_DEF];
-export const BOSS_DEFS: BossDef[] = [DRAGON_DEF, DARK_LICH_DEF, WYVERN_DEF];
+export const BOSS_DEFS: BossDef[] = [ROCK_GIANT_DEF, DRAGON_DEF, DARK_LICH_DEF, WYVERN_DEF];
 
 export const ALL_ENEMIES: (EnemyDef | BossDef)[] = [...NORMAL_ENEMIES, ...ELITE_ENEMIES, ...BOSS_DEFS];
 
@@ -216,4 +238,6 @@ export const DROP_ITEM_MAP: Record<string, string> = {
   soul_gem: '灵魂宝石',
   wyvern_blade: '飞龙之刃',
   wyvern_wing: '飞龙翼',
+  rock_core: '岩心',
+  granite_shard: '花岗岩碎片',
 };

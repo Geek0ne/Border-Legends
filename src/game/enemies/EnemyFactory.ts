@@ -166,6 +166,71 @@ function buildSkeletonKnight(): THREE.Group {
   return g;
 }
 
+/** 岩巨人（山地 Boss）：巨岩构成，熔岩裂缝发光 */
+function buildRockGiant(): THREE.Group {
+  const g = new THREE.Group();
+  const rock = new THREE.MeshStandardMaterial({ color: 0x6d675e, roughness: 1, flatShading: true });
+  const rockDark = new THREE.MeshStandardMaterial({ color: 0x554f47, roughness: 1, flatShading: true });
+  const magma = new THREE.MeshStandardMaterial({
+    color: 0xff7733, emissive: 0xff5511, emissiveIntensity: 1.2, roughness: 0.5,
+  });
+  const moss = new THREE.MeshStandardMaterial({ color: 0x4a7a3c, roughness: 1, flatShading: true });
+
+  const boulder = (r: number, mat: THREE.Material, x: number, y: number, z: number, sy = 1) => {
+    const m = new THREE.Mesh(new THREE.DodecahedronGeometry(r, 1), mat);
+    const pos = m.geometry.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i++) {
+      const k = 1 + Math.sin(i * 7.3 + r * 13) * 0.14;
+      pos.setXYZ(i, pos.getX(i) * k, pos.getY(i) * k, pos.getZ(i) * k);
+    }
+    m.geometry.computeVertexNormals();
+    m.position.set(x, y, z);
+    m.scale.y = sy;
+    m.castShadow = true;
+    g.add(m);
+    return m;
+  };
+
+  // 腿
+  boulder(0.55, rockDark, -0.62, 0.55, 0, 1.15);
+  boulder(0.55, rockDark, 0.62, 0.55, 0, 1.15);
+  // 躯干（主岩）
+  boulder(1.25, rock, 0, 1.95, 0, 1.1);
+  boulder(0.75, rock, -1.15, 2.35, 0);   // 左肩岩
+  boulder(0.75, rock, 1.15, 2.35, 0);    // 右肩岩
+  // 手臂 + 拳
+  boulder(0.5, rock, -1.35, 1.55, 0.1);
+  boulder(0.62, rockDark, -1.42, 0.85, 0.22); // 左拳
+  boulder(0.5, rock, 1.35, 1.55, 0.1);
+  boulder(0.62, rockDark, 1.42, 0.85, 0.22);  // 右拳
+  // 头 + 熔岩眼
+  boulder(0.55, rock, 0, 3.15, 0.12);
+  for (const sx of [-1, 1]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), magma);
+    eye.position.set(sx * 0.22, 3.22, 0.55);
+    g.add(eye);
+  }
+  // 熔岩裂缝（胸前/手臂）
+  const cracks: Array<[number, number, number, number]> = [
+    [0, 2.1, 1.18, 0], [-0.55, 1.8, 1.05, 0.6], [0.6, 2.4, 1.0, -0.5],
+    [-1.3, 1.6, 0.55, 0.3], [1.35, 1.2, 0.6, -0.3],
+  ];
+  for (const [x, y, z, rot] of cracks) {
+    const c = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.55, 0.05), magma);
+    c.position.set(x, y, z);
+    c.rotation.z = rot;
+    g.add(c);
+  }
+  // 苔藓斑块
+  for (let i = 0; i < 4; i++) {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.3, 7, 5), moss);
+    m.position.set((Math.random() - 0.5) * 2, 1.4 + Math.random() * 1.4, (Math.random() - 0.4) * 1.2);
+    m.scale.y = 0.25;
+    g.add(m);
+  }
+  return g;
+}
+
 /** 按定义构建怪物模型 */
 export function buildEnemyMesh(def: EnemyDef): THREE.Group {
   let g: THREE.Group;
@@ -175,6 +240,7 @@ export function buildEnemyMesh(def: EnemyDef): THREE.Group {
     case 'slime': g = buildSlime(); break;
     case 'ghoul': g = buildGhoul(); break;
     case 'skeleton_knight': g = buildSkeletonKnight(); break;
+    case 'rock_giant': g = buildRockGiant(); break;
     case 'skeleton':
     default: g = buildSkeleton(); break;
   }
@@ -260,17 +326,28 @@ export class EnemySpawner {
 
   private spawnOne(playerPos: { x: number; z: number } | null): void {
     const def = this.pickDef();
+    this.spawn(def, playerPos);
+  }
+
+  /** 指定位置生成（Boss 等） */
+  public spawnBoss(def: EnemyDef, x: number, z: number): void {
+    this.spawn(def, null, x, z);
+  }
+
+  private spawn(def: EnemyDef, playerPos: { x: number; z: number } | null, fixedX?: number, fixedZ?: number): void {
     const mesh = buildEnemyMesh(def);
 
     // 位置：围绕出生点环带，避开玩家贴脸
-    let x = 0;
-    let z = 0;
-    for (let tries = 0; tries < 8; tries++) {
-      const angle = Math.random() * Math.PI * 2;
-      const r = this.minRadius + Math.random() * (this.maxRadius - this.minRadius);
-      x = Math.cos(angle) * r;
-      z = Math.sin(angle) * r;
-      if (!playerPos || Math.hypot(x - playerPos.x, z - playerPos.z) > 12) break;
+    let x = fixedX ?? 0;
+    let z = fixedZ ?? 0;
+    if (fixedX === undefined || fixedZ === undefined) {
+      for (let tries = 0; tries < 8; tries++) {
+        const angle = Math.random() * Math.PI * 2;
+        const r = this.minRadius + Math.random() * (this.maxRadius - this.minRadius);
+        x = Math.cos(angle) * r;
+        z = Math.sin(angle) * r;
+        if (!playerPos || Math.hypot(x - playerPos.x, z - playerPos.z) > 12) break;
+      }
     }
 
     const y = this.heightAt ? this.heightAt(x, z) : 0;

@@ -10,6 +10,9 @@ import { EnemyManager } from './game/enemies/EnemyManager';
 import { EnemySpawner } from './game/enemies/EnemyFactory';
 import { CollectibleSpawner } from './game/pickup/CollectibleSpawner';
 import { ROCK_GIANT_DEF } from './data/enemies/EnemyDefs';
+import { SkillManager } from './game/skills/SkillManager';
+import { SKILL_DATABASE } from './game/skills/SkillDatabase';
+import { SkillBarRenderer, SkillBarSlot } from './game/hud/SkillBarRenderer';
 import { QuestManager } from './game/quest/QuestManager';
 import { PickupSystem } from './game/pickup/PickupSystem';
 import { SceneManager } from './game/scenes/SceneManager';
@@ -35,6 +38,9 @@ export class GameOrchestrator {
   private enemyManager: EnemyManager;
   private enemySpawner: EnemySpawner;
   private collectibles: CollectibleSpawner;
+  private skillManager: SkillManager = new SkillManager();
+  private skillBar: SkillBarRenderer | null = null;
+  private skillBarKeys: string[] = ['power_strike', 'whirlwind_strike', 'shield_bash', 'battle_cry'];
   private questManager: QuestManager;
   private pickupSystem: PickupSystem;
   private sceneManager: SceneManager;
@@ -73,6 +79,18 @@ export class GameOrchestrator {
     this.collectibles = new CollectibleSpawner(this.scene, { count: 18, heightAt });
     // 山地关卡 Boss：岩巨人（固定刷新在东北高地）
     this.enemySpawner.spawnBoss(ROCK_GIANT_DEF, 42, -42);
+
+    // 技能栏（数字键 1-4 释放）
+    this.skillManager.batchRegisterSkills(
+      this.skillBarKeys.map((id) => SKILL_DATABASE[id]).filter(Boolean)
+    );
+    for (const id of this.skillBarKeys) this.skillManager.learnSkill(id);
+    const skillCanvas = document.createElement('canvas');
+    this.skillBar = new SkillBarRenderer(skillCanvas, 384, 72);
+    window.addEventListener('keydown', (e: KeyboardEvent) => {
+      const idx = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(e.code);
+      if (idx >= 0 && this.skillBarKeys[idx]) this.castSkill(this.skillBarKeys[idx]);
+    });
     this.inventorySystem = new InventorySystem(50);
     this.questManager = new QuestManager(this.hud, this.inventorySystem);
     this.pickupSystem = new PickupSystem();
@@ -209,6 +227,29 @@ export class GameOrchestrator {
     // 检查任务目标
     this.questManager.checkObjectives();
 
+    // 技能冷却 + MP 回复 + 技能栏状态
+    this.skillManager.tickCooldowns(delta);
+    const hudState = this.hud.getState();
+    if (hudState.mp < hudState.maxMp) {
+      this.hud.updateState({ mp: Math.min(hudState.maxMp, hudState.mp + delta * 2) });
+    }
+    if (this.skillBar) {
+      const slots: SkillBarSlot[] = this.skillBarKeys.map((id, i) => {
+        const skill = this.skillManager.getSkill(id);
+        return {
+          id,
+          icon: skill?.icon ?? '⚔️',
+          keyBind: String(i + 1),
+          cooldown: this.skillManager.getCooldownRemaining(id),
+          maxCooldown: skill?.cooldown ?? 1,
+          isUsable: !!skill && !this.skillManager.isOnCooldown(id),
+          isActive: false,
+        };
+      });
+      this.skillBar.setSlots(slots);
+      this.skillBar.tickCooldowns(delta);
+    }
+
     // Boss 血条（存活即显示）
     const boss = this.enemyManager.getAliveEnemies().find((e) => e.def.type === 'boss');
     const bossBar = document.getElementById('boss-bar');
@@ -254,6 +295,47 @@ export class GameOrchestrator {
       if (ctx2d) {
         ctx2d.drawImage(this.minimap.getCanvas(), this.canvas2D.width - 196, 16);
       }
+    }
+    // 技能栏叠加到 HUD 底部居中
+    if (this.skillBar) {
+      const ctx2d = this.canvas2D.getContext('2d');
+      if (ctx2d) {
+        ctx2d.drawImage(
+          this.skillBar.getCanvas(),
+          (this.canvas2D.width - 384) / 2,
+          this.canvas2D.height - 88
+        );
+      }
+    }
+  }
+
+  /** 释放技能：消耗 MP，对范围内的敌人造成伤害 */
+  private castSkill(skillId: string): void {
+    const playerPos = this.getApproximatePlayerPosition();
+    if (!playerPos) return;
+    const st = this.hud.getState();
+    const skill = this.skillManager.getSkill(skillId);
+    if (!skill) return;
+    const paid = this.skillManager.useSkill(skillId, st.mp, st.maxMp);
+    if (paid === null) return;
+
+    this.hud.updateState({ mp: Math.max(0, st.mp - paid) });
+    this.audioSystem.playSfx('skill');
+    this.hud.addFloatingText(skill.name, playerPos.x, playerPos.z, 0x66ccff);
+
+    const radius = skill.areaOfEffect > 0 ? skill.areaOfEffect : 6;
+    for (const enemy of this.enemyManager.getEnemiesInRange(playerPos)) {
+      const d = Math.hypot(enemy.position.x - playerPos.x, enemy.position.z - playerPos.z);
+      if (d > radius) continue;
+      const damage = Math.max(
+        1,
+        Math.round(skill.damage.base + skill.damage.scaling * st.level - enemy.def.defense)
+      );
+      const killed = this.enemyManager.applyDamage(enemy, damage, this.hud);
+      this.hud.addFloatingText(String(damage), enemy.position.x, enemy.position.z, 0x66ccff);
+      this.combatFeedback.hit(
+        new THREE.Vector3(enemy.position.x, 1.1, enemy.position.z), killed ? 1.4 : 0.9
+      );
     }
   }
 

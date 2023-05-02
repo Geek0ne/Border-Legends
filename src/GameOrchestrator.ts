@@ -13,6 +13,10 @@ import { ROCK_GIANT_DEF } from './data/enemies/EnemyDefs';
 import { SkillManager } from './game/skills/SkillManager';
 import { SKILL_DATABASE } from './game/skills/SkillDatabase';
 import { SkillBarRenderer, SkillBarSlot } from './game/hud/SkillBarRenderer';
+import {
+  SaveSystem, SaveData, PlayerSaveData, InventorySaveData,
+  WorldSaveData, GameSettingsSaveData,
+} from './game/save/SaveSystem';
 import { QuestManager } from './game/quest/QuestManager';
 import { PickupSystem } from './game/pickup/PickupSystem';
 import { SceneManager } from './game/scenes/SceneManager';
@@ -41,6 +45,7 @@ export class GameOrchestrator {
   private skillManager: SkillManager = new SkillManager();
   private skillBar: SkillBarRenderer | null = null;
   private skillBarKeys: string[] = ['power_strike', 'whirlwind_strike', 'shield_bash', 'battle_cry'];
+  private saveTimer: number = 0;
   private questManager: QuestManager;
   private pickupSystem: PickupSystem;
   private sceneManager: SceneManager;
@@ -91,6 +96,10 @@ export class GameOrchestrator {
       const idx = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(e.code);
       if (idx >= 0 && this.skillBarKeys[idx]) this.castSkill(this.skillBarKeys[idx]);
     });
+
+    // 存档：启动加载 + 关闭前保存
+    this.restoreGame();
+    window.addEventListener('beforeunload', () => this.persistGame());
     this.inventorySystem = new InventorySystem(50);
     this.questManager = new QuestManager(this.hud, this.inventorySystem);
     this.pickupSystem = new PickupSystem();
@@ -152,6 +161,7 @@ export class GameOrchestrator {
    */
   public stop(): void {
     this.isRunning = false;
+    this.persistGame();
     this.ambientAudio.stop();
     this.audioSystem.stopBgm();
     if (this.animationId) {
@@ -184,6 +194,13 @@ export class GameOrchestrator {
     const input = this.inputManager.poll();
     if (input) {
       this.handleInput(input, delta);
+    }
+
+    // 每 60 秒自动存档
+    this.saveTimer += delta;
+    if (this.saveTimer >= 60) {
+      this.saveTimer = 0;
+      this.persistGame();
     }
 
     // 更新 HUD
@@ -307,6 +324,63 @@ export class GameOrchestrator {
         );
       }
     }
+  }
+
+  /** 存档：打包玩家/背包/世界状态写入 localStorage */
+  private persistGame(): void {
+    const st = this.hud.getState();
+    const pos = this.camera.position;
+    const player: PlayerSaveData = {
+      id: 'player_1',
+      name: '冒险者',
+      position: { x: pos.x, y: pos.y, z: pos.z },
+      rotation: { x: 0, y: 0, z: 0, w: 1 },
+      level: st.level,
+      hp: st.hp, maxHp: st.maxHp,
+      mp: st.mp, maxMp: st.maxMp,
+      xp: st.xp, xpToNextLevel: st.xpToNext,
+      stats: {
+        attack: 10, magic: 8, defense: 6, magicDefense: 5,
+        speed: 5, dodgeRate: 0.05, critRate: 0.1, critDamage: 1.5,
+      },
+      skills: [...this.skillBarKeys],
+      currentScene: 'mountain_pass',
+      scenePosition: { x: pos.x, y: pos.y, z: pos.z },
+    };
+    const inventory: InventorySaveData[] = this.inventorySystem.getAllItems().map((slot: any, i: number) => ({
+      itemId: slot.itemId,
+      instanceId: `${slot.itemId}_${i}`,
+      quantity: slot.quantity ?? 1,
+      level: 1,
+      durability: undefined,
+      enchantment: 0,
+    }));
+    const world: WorldSaveData = {
+      enemiesDefeated: [],
+      questProgress: {},
+      collectiblesCollected: [],
+      unlockedAreas: ['mountain_pass'],
+      worldEventTriggers: {},
+    };
+    const settings: GameSettingsSaveData = {
+      volume: 0.8, mouseSensitivity: 1, showHealthBar: true, showManaBar: true,
+      showMiniMap: true, showQuestLog: true, cameraDistance: 8, cameraPitch: 0.35,
+    };
+    const data = SaveSystem.createSaveData(player, inventory, {}, st.gold, world, settings);
+    SaveSystem.saveGame(data);
+  }
+
+  /** 读档：恢复玩家属性与位置 */
+  private restoreGame(): void {
+    const data: SaveData | null = SaveSystem.loadGame();
+    if (!data) return;
+    const p = data.player;
+    this.hud.updateState({
+      hp: p.hp, maxHp: p.maxHp, mp: p.mp, maxMp: p.maxMp,
+      xp: p.xp, xpToNext: p.xpToNextLevel, level: p.level, gold: data.gold,
+    });
+    this.camera.position.set(p.position.x, p.position.y, p.position.z);
+    this.hud.showNotification('存档已加载：' + p.name + ' Lv.' + p.level);
   }
 
   /** 释放技能：消耗 MP，对范围内的敌人造成伤害 */
